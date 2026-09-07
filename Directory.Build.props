@@ -24,6 +24,7 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <Product>Vib-launcher</Product>
     <Company>Vib Studios</Company>
+    <Copyright>Copyright (C) 2026 Vib Studios. Licensed GPL-3.0-or-later.</Copyright>
     <Version>0.1.0</Version>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>

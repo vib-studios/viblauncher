@@ -289,5 +289,18 @@ desktop, so buttons here use the same 6px radius as the inputs beside them.
 
 ## Licence
 
+Copyright (C) 2026 Vib Studios.
+
+Vib-launcher is free software: you can redistribute it and modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version. It is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY, without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See [LICENSE](LICENSE) for the full text, or
+<https://www.gnu.org/licenses/>.
+
+The same licence [vib-MC](https://github.com/vib-studios/vib-MC) uses, so code can move between the
+two without a licence question.
+
 Independently implemented. No Prism Launcher code, assets or branding. Minecraft files are obtained
-through Mojang's own distribution mechanisms and none are redistributed.
+through Mojang's own distribution mechanisms and none are redistributed, so nothing in this
+licence applies to them: they stay Mojang's, under Mojang's terms.
