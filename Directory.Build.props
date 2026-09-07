@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Shared build settings for every Vib-launcher project.
+
+    Warnings are errors: the launcher shells out to Java, writes into user
+    directories and handles auth tokens, so a nullable warning here is a real
+    bug waiting to happen at runtime.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!--
+      Globalization data is required, not optional. WPF's text layer builds a
+      CultureInfo while measuring the first run of text, so invariant mode makes
+      the window throw before it can paint. Culture-sensitive formatting in the
+      launcher itself is explicit about which culture it uses.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <Product>Vib-launcher</Product>
+    <Company>Vib Studios</Company>
+    <Version>0.1.0</Version>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+</Project>

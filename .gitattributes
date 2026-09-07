@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.sln       text eol=crlf
+*.slnx      text eol=crlf
+*.csproj    text eol=crlf
+*.props     text eol=crlf
+*.xaml      text eol=crlf
+*.manifest  text eol=crlf
+
+*.ico   binary
+*.png   binary
+*.jar   binary

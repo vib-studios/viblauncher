@@ -1,0 +1,25 @@
+<Application x:Class="VibLauncher.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mvvm="clr-namespace:VibLauncher.App.Mvvm"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Order matters: the palette defines the brushes the other two
+                     dictionaries reference by StaticResource. -->
+                <ResourceDictionary Source="Themes/Classic.Palette.xaml" />
+                <ResourceDictionary Source="Themes/Classic.Text.xaml" />
+                <ResourceDictionary Source="Themes/Classic.Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <mvvm:BoolToVisibility x:Key="BoolToVisibility" />
+            <mvvm:InverseBoolToVisibility x:Key="InverseBoolToVisibility" />
+            <mvvm:NotNullToVisibility x:Key="NotNullToVisibility" />
+            <mvvm:InverseBool x:Key="InverseBool" />
+            <mvvm:BoolToOpacity x:Key="BoolToOpacity" />
+            <mvvm:StateToBrush x:Key="StateToBrush" />
+            <mvvm:BoolToToggleText x:Key="BoolToToggleText" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

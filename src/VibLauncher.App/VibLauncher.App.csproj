@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The launcher itself: a WPF desktop application.
+
+    WPF rather than WinUI 3 because the Windows App SDK tooling is not present in
+    this environment, while the WindowsDesktop runtime WPF needs already is. The
+    UI is native XAML throughout; nothing here renders HTML or hosts a browser.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>VibLauncher.App</RootNamespace>
+    <AssemblyName>VibLauncher</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!--
+      The launcher's icon. Setting it here gives the built .exe its shell icon,
+      and WPF hands the same icon to every window that does not set one itself,
+      so the title bar and taskbar match without any XAML.
+    -->
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+
+    <!-- Text on a dark background needs the greyscale renderer to stay legible. -->
+    <TextRenderingMode>Grayscale</TextRenderingMode>
+
+    <!--
+      Required by the LibraryImport source generator, which writes the marshalling
+      for the one DWM call the launcher makes to darken its title bar. No unsafe
+      code is written by hand anywhere in this project.
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VibLauncher.Core\VibLauncher.Core.csproj" />
+    <ProjectReference Include="..\VibLauncher.Infrastructure\VibLauncher.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

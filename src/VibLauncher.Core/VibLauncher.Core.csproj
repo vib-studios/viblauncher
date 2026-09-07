@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Core holds the launcher's domain model and every rule that does not need a
+    network stack or a UI toolkit: instances, accounts, mods, servers, Java
+    discovery, paths and logging. It deliberately has no package references so
+    the rules stay testable without any I/O beyond the file system.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>VibLauncher.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>

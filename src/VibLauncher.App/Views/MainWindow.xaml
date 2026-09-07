@@ -1,0 +1,221 @@
+<Window x:Class="VibLauncher.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:VibLauncher.App.ViewModels"
+        xmlns:views="clr-namespace:VibLauncher.App.Views"
+        Title="Vib-launcher"
+        Width="1180"
+        Height="760"
+        MinWidth="960"
+        MinHeight="600"
+        Background="{StaticResource SurfaceBrush}"
+        FontFamily="{StaticResource SansFont}"
+        TextOptions.TextFormattingMode="Ideal"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Each page view model renders as its own view. This is the whole of
+             the navigation wiring: selecting a rail entry swaps the view model,
+             and WPF picks the matching view. -->
+        <DataTemplate DataType="{x:Type vm:InstancesViewModel}">
+            <views:InstancesPage />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ServersViewModel}">
+            <views:ServersPage />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AccountsViewModel}">
+            <views:AccountsPage />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DownloadsViewModel}">
+            <views:DownloadsPage />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsPage />
+        </DataTemplate>
+
+        <!-- A rail entry: vector glyph, then label. Ember marks the current one. -->
+        <Style x:Key="NavItem" TargetType="ListBoxItem">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Chrome"
+                                Margin="0,1"
+                                Padding="12,9"
+                                Background="Transparent"
+                                CornerRadius="{StaticResource ControlRadius}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource RaisedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource EmberWashBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="216" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ============================ Left rail ============================ -->
+        <Border Grid.Row="0"
+                Grid.Column="0"
+                Background="{StaticResource CardBrush}"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,0,1,0">
+            <DockPanel Margin="14,16,14,14">
+
+                <!--
+                    Wordmark.
+
+                    The mark is the brand's three-by-three grid: ember at the
+                    four corners, a deeper ember on the four edges, and a void
+                    square in the middle, inside a void border. It is the same
+                    shape and the same three colours as favicon.ico, which
+                    Windows is drawing in the title bar a few pixels away, so
+                    the two have to agree. Square corners and whole-pixel cells
+                    on purpose: the mark is a pixel grid, and rounding it or
+                    letting a cell land on a half pixel is what made the old
+                    one read as a generic rounded-square app icon.
+
+                    The grid is 24 rather than a size that would sit closer to
+                    the wordmark's height, because 24 is the smallest sensible
+                    one whose thirds are whole device pixels at every scale
+                    Windows offers: 8 at 100%, 10 at 125%, 12 at 150%, 14 at
+                    175%, 16 at 200%. At 18 the middle row and column came out
+                    a pixel short at 125% and the mark read as lopsided.
+                -->
+                <StackPanel DockPanel.Dock="Top"
+                            Margin="4,0,0,22"
+                            Orientation="Horizontal">
+                    <Border VerticalAlignment="Center"
+                            Padding="1"
+                            Background="{StaticResource MarkVoidBrush}">
+                        <UniformGrid Width="24"
+                                     Height="24"
+                                     Columns="3"
+                                     Rows="3">
+                            <Rectangle Fill="{StaticResource MarkEmberBrush}" />
+                            <Rectangle Fill="{StaticResource MarkEmberDeepBrush}" />
+                            <Rectangle Fill="{StaticResource MarkEmberBrush}" />
+
+                            <Rectangle Fill="{StaticResource MarkEmberDeepBrush}" />
+                            <Rectangle Fill="{StaticResource MarkVoidBrush}" />
+                            <Rectangle Fill="{StaticResource MarkEmberDeepBrush}" />
+
+                            <Rectangle Fill="{StaticResource MarkEmberBrush}" />
+                            <Rectangle Fill="{StaticResource MarkEmberDeepBrush}" />
+                            <Rectangle Fill="{StaticResource MarkEmberBrush}" />
+                        </UniformGrid>
+                    </Border>
+                    <TextBlock Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               Style="{StaticResource Wordmark}"
+                               Text="vib-launcher" />
+                </StackPanel>
+
+                <!-- Account footer, pinned to the bottom of the rail. -->
+                <Border DockPanel.Dock="Bottom"
+                        Margin="0,14,0,0"
+                        Padding="12,10"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource LineBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource ControlRadius}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="ACCOUNT" />
+                        <TextBlock Style="{StaticResource MonoText}"
+                                   Foreground="{StaticResource BodyBrush}"
+                                   Text="{Binding ActiveAccountText}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+
+                <ListBox ItemContainerStyle="{StaticResource NavItem}"
+                         ItemsSource="{Binding Navigation}"
+                         SelectedItem="{Binding Selected}"
+                         Style="{StaticResource ClassicListBox}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Path Width="15"
+                                      Height="15"
+                                      VerticalAlignment="Center"
+                                      Data="{Binding Glyph}"
+                                      Stretch="Uniform"
+                                      Stroke="{StaticResource MutedBrush}"
+                                      StrokeThickness="1.3" />
+                                <TextBlock Margin="12,0,0,0"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{StaticResource MonoFont}"
+                                           FontSize="12.5"
+                                           Foreground="{StaticResource BodyBrush}"
+                                           Text="{Binding Title}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================= Content ============================= -->
+        <ContentControl Grid.Row="0"
+                        Grid.Column="1"
+                        Content="{Binding CurrentPage}" />
+
+        <!-- ============================ Status bar =========================== -->
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Padding="16,7"
+                Background="{StaticResource CardBrush}"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="7"
+                             Height="7"
+                             VerticalAlignment="Center"
+                             Fill="{StaticResource EmberBrush}" />
+                    <TextBlock Margin="9,0,0,0"
+                               Style="{StaticResource MonoText}"
+                               Text="{Binding StatusText}" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1"
+                           Margin="20,0"
+                           HorizontalAlignment="Center"
+                           Style="{StaticResource MonoText}"
+                           Foreground="{StaticResource FaintBrush}"
+                           Text="{Binding DataDirectory}"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding DataDirectory}" />
+
+                <TextBlock Grid.Column="2"
+                           Style="{StaticResource MonoText}"
+                           Text="{Binding DownloadSummary}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

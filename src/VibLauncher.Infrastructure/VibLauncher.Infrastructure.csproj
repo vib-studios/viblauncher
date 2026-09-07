@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Infrastructure is where Core's interfaces meet the outside world: Mojang,
+    Modrinth, the loader metadata services, GitHub, the network stack and
+    Windows' credential encryption. Nothing here is referenced by Core, so the
+    domain rules stay testable without any of it.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>VibLauncher.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VibLauncher.Core\VibLauncher.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DPAPI, for encrypting account tokens against the current Windows user. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

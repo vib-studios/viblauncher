@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VibLauncher.App/VibLauncher.App.csproj" />
+    <Project Path="src/VibLauncher.Core/VibLauncher.Core.csproj" />
+    <Project Path="src/VibLauncher.Infrastructure/VibLauncher.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VibLauncher.Tests/VibLauncher.Tests.csproj" />
+  </Folder>
+</Solution>
