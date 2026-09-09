@@ -32,7 +32,9 @@ optdepends=(
 
 makedepends=('dotnet-sdk-10.0' 'git')
 
-source=("git+$url.git#tag=v$pkgver")
+# Named explicitly so the checkout lands in $srcdir/$pkgname regardless of what
+# the repository itself is called; build(), check() and package() all cd there.
+source=("$pkgname::git+$url.git#tag=v$pkgver")
 sha256sums=('SKIP')
 
 _project=VibLauncher
@@ -57,10 +59,15 @@ build() {
   # package does not ship a second copy of the runtime for every application
   # that uses it. --no-self-contained is what keeps that true while still
   # producing a native launcher binary for the RID.
+  # DebugType=none keeps the .pdb files out of the package and stops the
+  # assemblies embedding the absolute path they were built at, which makepkg
+  # reports as a reference to $srcdir.
   dotnet publish src/$_project.App/$_project.App.csproj \
     --configuration Release \
     --runtime "$rid" \
     --no-self-contained \
+    -p:DebugType=none \
+    -p:DebugSymbols=false \
     --output "$srcdir/publish"
 }
 
