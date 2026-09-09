@@ -20,7 +20,7 @@ page anywhere in it.
 | OS | Linux (x86-64 or aarch64). Windows 10 20H1 or newer, 64-bit, builds and is expected to work but is not tested - see [Platform support](#platform-support). |
 | To run | [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). On Arch: `dotnet-runtime-10.0` |
 | To build | .NET 10 SDK. On Arch: `dotnet-sdk-10.0` |
-| To play | A Java runtime. Which one depends on the Minecraft version: Java 8 for 1.16 and older, 17 for 1.18, 21 for 1.20.5 and newer. The launcher detects what is installed and says which is needed. |
+| To play | A Java runtime. Which one depends on the Minecraft version: Java 8 for 1.16 and older, 16 for 1.17, 17 for 1.18 through 1.20.4, and 21 for 1.20.5 and newer. This table is a guide; the launcher uses the `javaVersion` block Mojang publishes with a version when it is there, falls back to these bounds when it is not, detects what is installed, and says which release is needed. |
 | To run a server | Java 8 or newer, per vib-MC's own requirement |
 | Recommended on Linux | `libsecret` and a running keyring, so Microsoft tokens go to the desktop keyring rather than to a file. See [Accounts](#accounts). |
 

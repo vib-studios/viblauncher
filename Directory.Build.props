@@ -16,10 +16,11 @@
     <AnalysisLevel>latest</AnalysisLevel>
 
     <!--
-      Globalization data is required, not optional. WPF's text layer builds a
-      CultureInfo while measuring the first run of text, so invariant mode makes
-      the window throw before it can paint. Culture-sensitive formatting in the
-      launcher itself is explicit about which culture it uses.
+      Globalization data is required, not optional. Published with
+      InvariantGlobalization=true the launcher does not start: the process comes
+      up and stays alive, but no window is ever created and nothing is written
+      to the console, so there is no error to work back from. Culture-sensitive
+      formatting in the launcher itself is explicit about which culture it uses.
     -->
     <InvariantGlobalization>false</InvariantGlobalization>
     <Product>Vib-launcher</Product>
