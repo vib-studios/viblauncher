@@ -156,7 +156,7 @@ public sealed class ServerProcess : IServerProcess
             {
                 throw new InvalidConfigurationException(
                     $"\"{Server.Name}\" did not start.",
-                    "Windows refused to launch the Java process. Check the Java path in the server's settings.");
+                    "The Java process could not be started. Check the Java path in the server's settings.");
             }
         }
         catch (Win32Exception ex)

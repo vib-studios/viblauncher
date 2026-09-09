@@ -136,10 +136,12 @@ public sealed class MinecraftLauncher : IMinecraftLauncher
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
+            // Despite the name, this is what the runtime raises on every
+            // platform when the executable is missing or not executable.
             session.Dispose();
             throw new JavaNotFoundException(
                 $"\"{instance.Name}\" could not be started.",
-                $"Windows would not run \"{java.JavaExecutable}\". Pick a different Java runtime in the instance's settings.",
+                $"\"{java.JavaExecutable}\" could not be run. Pick a different Java runtime in the instance's settings.",
                 ex);
         }
 
@@ -163,7 +165,11 @@ public sealed class MinecraftLauncher : IMinecraftLauncher
     private List<string> BuildClasspath(MinecraftInstance instance, VersionMetadata metadata)
     {
         var entries = new List<string>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Keyed the way this file system compares names: on Linux two libraries
+        // whose paths differ only in case really are two files, and merging them
+        // would drop one off the classpath.
+        var seen = new HashSet<string>(HostPlatform.PathComparer);
 
         foreach (var library in MinecraftInstaller.ApplicableLibraries(metadata))
         {

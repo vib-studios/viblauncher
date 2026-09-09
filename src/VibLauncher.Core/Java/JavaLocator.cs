@@ -1,15 +1,19 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using VibLauncher.Core.Common;
 using VibLauncher.Core.Diagnostics;
 
 namespace VibLauncher.Core.Java;
 
 /// <inheritdoc cref="IJavaLocator"/>
 /// <remarks>
-/// Discovery is deliberately registry-free. It walks the directories the common
-/// Windows JDK distributions install into, plus <c>JAVA_HOME</c> and every
-/// <c>PATH</c> entry, which between them cover Adoptium, Microsoft, Corretto,
-/// Zulu, Oracle, JetBrains' <c>.jdks</c> folder and hand-unpacked builds.
+/// Discovery is deliberately registry-free and package-manager-free. It walks
+/// the directories the common JDK distributions install into on this platform,
+/// plus <c>JAVA_HOME</c> and every <c>PATH</c> entry. On Linux that covers the
+/// distribution packages under <c>/usr/lib/jvm</c> (which is where Arch's
+/// <c>jdk-openjdk</c> and friends land), the <c>/opt</c> unpacks, SDKMAN,
+/// asdf, mise and JetBrains' <c>.jdks</c> folder; on Windows it covers
+/// Adoptium, Microsoft, Corretto, Zulu, Oracle and hand-unpacked builds.
 /// </remarks>
 public sealed partial class JavaLocator : IJavaLocator
 {
@@ -49,11 +53,13 @@ public sealed partial class JavaLocator : IJavaLocator
                 return _cache;
             }
 
-            var found = new Dictionary<string, JavaRuntime>(StringComparer.OrdinalIgnoreCase);
+            var found = new Dictionary<string, JavaRuntime>(HostPlatform.PathComparer);
 
-            foreach (var executable in CandidateExecutables())
+            foreach (var candidate in CandidateExecutables())
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                var executable = Canonical(candidate);
 
                 if (found.ContainsKey(executable))
                 {
@@ -70,7 +76,7 @@ public sealed partial class JavaLocator : IJavaLocator
             _cache = [.. found.Values
                 .OrderByDescending(r => r.Is64Bit)
                 .ThenByDescending(r => r.MajorVersion)
-                .ThenBy(r => r.JavaExecutable, StringComparer.OrdinalIgnoreCase)];
+                .ThenBy(r => r.JavaExecutable, HostPlatform.PathComparer)];
 
             _log.Info(Category, $"Found {_cache.Count} Java runtime(s): " +
                                 string.Join(", ", _cache.Select(r => r.DisplayName).Distinct()));
@@ -114,7 +120,109 @@ public sealed partial class JavaLocator : IJavaLocator
             ?? runtimes.FirstOrDefault(r => JavaRequirements.Satisfies(r.MajorVersion, requiredMajorVersion));
     }
 
-    /// <summary>Every <c>java.exe</c> worth inspecting, in rough order of likelihood.</summary>
+    /// <summary>How many times the walk may restart before a link chain is treated as a loop.</summary>
+    private const int MaxSymlinkPasses = 16;
+
+    /// <summary>
+    /// Resolves a path through every symlink in it, so two names for one runtime
+    /// are recognised as one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is what keeps a Linux install from listing the same JDK four times.
+    /// Arch's <c>archlinux-java</c> keeps <c>/usr/lib/jvm/default</c> and
+    /// <c>/usr/lib/jvm/default-runtime</c> as symlinks to the chosen runtime,
+    /// <c>/usr/bin/java</c> points through one of those, and <c>/usr/lib64</c>
+    /// is itself a link to <c>/usr/lib</c>. Every one of those is a distinct
+    /// string that the search finds separately.
+    /// </para>
+    /// <para>
+    /// It walks component by component because the framework will not:
+    /// <see cref="FileSystemInfo.ResolveLinkTarget"/> resolves only the last
+    /// component of a path, and in <c>/usr/lib/jvm/default/bin/java</c> the link
+    /// is <c>default</c>, two components earlier, so asking about the file
+    /// itself answers that it is not a link at all.
+    /// </para>
+    /// <para>
+    /// The walk then repeats until the path stops changing, because one pass is
+    /// not enough: <c>/usr/bin/java</c> points at
+    /// <c>/usr/lib/jvm/default-runtime/bin/java</c>, and that answer still has
+    /// an unresolved link in the middle of it.
+    /// </para>
+    /// <para>
+    /// Storing the resolved path is also the more predictable choice for an
+    /// instance that pins a runtime: the pin keeps meaning the JDK it was set
+    /// to, rather than silently becoming a different one the next time someone
+    /// runs <c>archlinux-java set</c>.
+    /// </para>
+    /// </remarks>
+    private static string Canonical(string executable)
+    {
+        try
+        {
+            var current = Path.GetFullPath(executable);
+
+            for (var pass = 0; pass < MaxSymlinkPasses; pass++)
+            {
+                var resolved = ResolveComponents(current);
+
+                if (string.Equals(resolved, current, StringComparison.Ordinal))
+                {
+                    return current;
+                }
+
+                current = resolved;
+            }
+
+            // A cycle. The last path seen is as good an answer as any, and the
+            // file it names either opens or is skipped like any other candidate.
+            return current;
+        }
+        catch (IOException)
+        {
+            // A broken link, or a path that no longer exists.
+            return executable;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return executable;
+        }
+        catch (ArgumentException)
+        {
+            return executable;
+        }
+    }
+
+    /// <summary>One pass: replaces each component that is a link with its target.</summary>
+    private static string ResolveComponents(string full)
+    {
+        var root = Path.GetPathRoot(full);
+        if (string.IsNullOrEmpty(root))
+        {
+            return full;
+        }
+
+        var current = root;
+
+        foreach (var segment in full[root.Length..]
+                     .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+
+            var info = Directory.Exists(current)
+                ? new DirectoryInfo(current)
+                : (FileSystemInfo)new FileInfo(current);
+
+            if (info.ResolveLinkTarget(returnFinalTarget: false)?.FullName is { } target)
+            {
+                current = target;
+            }
+        }
+
+        return current;
+    }
+
+    /// <summary>Every Java binary worth inspecting, in rough order of likelihood.</summary>
     private static IEnumerable<string> CandidateExecutables()
     {
         foreach (var root in SearchRoots())
@@ -152,7 +260,7 @@ public sealed partial class JavaLocator : IJavaLocator
                 }
 
                 // Oracle and some archives nest one level deeper, as in
-                // Java\jdk-21\bin, so check grandchildren too.
+                // Java/jdk-21/bin, so check grandchildren too.
                 IEnumerable<string> grandChildren;
                 try
                 {
@@ -180,16 +288,27 @@ public sealed partial class JavaLocator : IJavaLocator
 
     private static IEnumerable<string> ExecutablesIn(string javaHome)
     {
-        var executable = Path.Combine(javaHome, "bin", "java.exe");
+        var executable = Path.Combine(javaHome, "bin", HostPlatform.JavaExecutableName);
         if (File.Exists(executable))
         {
             yield return executable;
+        }
+
+        // A macOS bundle keeps the same layout one level down, under
+        // Contents/Home, which is what /Library/Java/JavaVirtualMachines holds.
+        if (OperatingSystem.IsMacOS())
+        {
+            var bundled = Path.Combine(javaHome, "Contents", "Home", "bin", HostPlatform.JavaExecutableName);
+            if (File.Exists(bundled))
+            {
+                yield return bundled;
+            }
         }
     }
 
     private static IEnumerable<string> SearchRoots()
     {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(HostPlatform.PathComparer);
         var roots = new List<string>();
 
         void Add(string? path)
@@ -203,20 +322,50 @@ public sealed partial class JavaLocator : IJavaLocator
         Add(Environment.GetEnvironmentVariable("JAVA_HOME"));
 
         // Every bin directory on PATH is a plausible java home once its parent
-        // is taken, which is how a hand-unpacked JDK gets found.
+        // is taken, which is how a hand-unpacked JDK gets found. This is also
+        // what picks up Arch's /usr/lib/jvm/default/bin symlink through
+        // /usr/bin, and any JDK a version manager has put on the path.
         var pathVariable = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
         foreach (var entry in pathVariable.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            if (entry.EndsWith("bin", StringComparison.OrdinalIgnoreCase))
+            if (entry.EndsWith("bin", HostPlatform.PathComparison))
             {
                 Add(Path.GetDirectoryName(entry));
             }
         }
 
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        if (OperatingSystem.IsWindows())
+        {
+            AddWindowsRoots(Add);
+        }
+        else
+        {
+            AddUnixRoots(Add, userProfile);
+        }
+
+        // IntelliJ and Gradle toolchains download here on every platform.
+        if (!string.IsNullOrEmpty(userProfile))
+        {
+            Add(Path.Combine(userProfile, ".jdks"));
+            Add(Path.Combine(userProfile, ".gradle", "jdks"));
+        }
+
+        // Runtimes that Vib-launcher itself has unpacked, alongside anything a
+        // future managed-runtime downloader puts in the same place.
+        Add(Path.Combine(
+            Configuration.LauncherPaths.DefaultCacheHome(),
+            Configuration.LauncherPaths.ApplicationFolderName,
+            "java"));
+
+        return roots;
+    }
+
+    private static void AddWindowsRoots(Action<string?> add)
+    {
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
         foreach (var baseDirectory in new[] { programFiles, programFilesX86 })
         {
@@ -225,27 +374,68 @@ public sealed partial class JavaLocator : IJavaLocator
                 continue;
             }
 
-            Add(Path.Combine(baseDirectory, "Java"));
-            Add(Path.Combine(baseDirectory, "Eclipse Adoptium"));
-            Add(Path.Combine(baseDirectory, "Eclipse Foundation"));
-            Add(Path.Combine(baseDirectory, "AdoptOpenJDK"));
-            Add(Path.Combine(baseDirectory, "Amazon Corretto"));
-            Add(Path.Combine(baseDirectory, "Zulu"));
-            Add(Path.Combine(baseDirectory, "BellSoft"));
-            Add(Path.Combine(baseDirectory, "Microsoft"));
-            Add(Path.Combine(baseDirectory, "RedHat"));
-            Add(Path.Combine(baseDirectory, "SapMachine"));
+            add(Path.Combine(baseDirectory, "Java"));
+            add(Path.Combine(baseDirectory, "Eclipse Adoptium"));
+            add(Path.Combine(baseDirectory, "Eclipse Foundation"));
+            add(Path.Combine(baseDirectory, "AdoptOpenJDK"));
+            add(Path.Combine(baseDirectory, "Amazon Corretto"));
+            add(Path.Combine(baseDirectory, "Zulu"));
+            add(Path.Combine(baseDirectory, "BellSoft"));
+            add(Path.Combine(baseDirectory, "Microsoft"));
+            add(Path.Combine(baseDirectory, "RedHat"));
+            add(Path.Combine(baseDirectory, "SapMachine"));
+        }
+    }
+
+    /// <summary>The places a JDK is found on Linux and macOS.</summary>
+    /// <remarks>
+    /// <c>/usr/lib/jvm</c> is the important one: it is where every distribution
+    /// package installs, Arch's <c>jdk-openjdk</c> and <c>jre-openjdk</c>
+    /// included, and where <c>archlinux-java</c> points its <c>default</c>
+    /// symlink. The rest cover the unpacked-tarball conventions and the version
+    /// managers, which between them are how most people end up with a second
+    /// Java version for an older Minecraft.
+    /// </remarks>
+    private static void AddUnixRoots(Action<string?> add, string userProfile)
+    {
+        // Distribution packages. Both lib and lib64 appear in the wild; Arch
+        // uses lib, and the multilib distributions use lib64.
+        add("/usr/lib/jvm");
+        add("/usr/lib64/jvm");
+        add("/usr/java");
+
+        // Hand-unpacked tarballs and vendor installers.
+        add("/opt/java");
+        add("/opt/jdk");
+        add("/opt");
+
+        // Nix and Guix profiles, which do not follow the FHS layout.
+        add("/run/current-system/sw/lib/openjdk");
+
+        if (OperatingSystem.IsMacOS())
+        {
+            add("/Library/Java/JavaVirtualMachines");
+            add("/System/Library/Java/JavaVirtualMachines");
         }
 
-        // IntelliJ and Gradle toolchains download here.
-        Add(Path.Combine(userProfile, ".jdks"));
-        Add(Path.Combine(userProfile, ".gradle", "jdks"));
+        if (string.IsNullOrEmpty(userProfile))
+        {
+            return;
+        }
 
-        // Runtimes that Vib-launcher itself has unpacked, alongside anything a
-        // future managed-runtime downloader puts in the same place.
-        Add(Path.Combine(localAppData, Configuration.LauncherPaths.ApplicationFolderName, "java"));
+        // Version managers, in rough order of how common they are.
+        add(Path.Combine(userProfile, ".sdkman", "candidates", "java"));
+        add(Path.Combine(userProfile, ".jabba", "jdk"));
+        add(Path.Combine(userProfile, ".asdf", "installs", "java"));
+        add(Path.Combine(userProfile, ".local", "share", "mise", "installs", "java"));
 
-        return roots;
+        // Per-user unpacks.
+        add(Path.Combine(userProfile, ".local", "lib", "jvm"));
+
+        if (OperatingSystem.IsMacOS())
+        {
+            add(Path.Combine(userProfile, "Library", "Java", "JavaVirtualMachines"));
+        }
     }
 
     /// <summary>Parses the key/value <c>release</c> file that ships with a JDK.</summary>
@@ -348,7 +538,9 @@ public sealed partial class JavaLocator : IJavaLocator
         }
         catch (SystemException ex)
         {
-            // Covers the Win32Exception thrown for a broken or non-executable file.
+            // Covers the Win32Exception the runtime raises for a file that is
+            // not executable or is a broken symlink, which is what a stale
+            // /usr/lib/jvm entry left behind by a removed package looks like.
             _log.Debug(Category, $"Could not inspect \"{javaExecutablePath}\": {ex.Message}");
             return null;
         }

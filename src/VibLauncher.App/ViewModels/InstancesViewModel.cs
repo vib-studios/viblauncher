@@ -124,12 +124,9 @@ public sealed class InstancesViewModel : ObservableObject
 
     private async Task ImportAsync()
     {
-        var file = NativeShell.PickFile(
+        var file = await NativeShell.PickFileAsync(
             "Import an instance",
-            "Instances and modpacks (*.vibinstance;*.mrpack;*.zip)|*.vibinstance;*.mrpack;*.zip|"
-            + "Vib-launcher instance (*.vibinstance)|*.vibinstance|"
-            + "Modrinth modpack (*.mrpack)|*.mrpack|"
-            + "Zip archive (*.zip)|*.zip");
+            [NativeShell.FileTypes.InstanceArchive, NativeShell.FileTypes.Zip]).ConfigureAwait(true);
 
         if (file is null)
         {
@@ -169,7 +166,7 @@ public sealed class InstancesViewModel : ObservableObject
             return;
         }
 
-        MessageDialog.Show(
+        await MessageDialog.ShowAsync(
             $"\"{instance.Name}\" was imported.",
             "Minecraft is downloaded the first time it is launched.");
     }
@@ -185,7 +182,7 @@ public sealed class InstancesViewModel : ObservableObject
     /// </remarks>
     private async Task AskForVersionAsync(MinecraftInstance instance)
     {
-        MessageDialog.Show(
+        await MessageDialog.ShowAsync(
             $"\"{instance.Name}\" was imported.",
             "The archive did not say which Minecraft version it is for, so one has to be chosen before it can run.");
 
@@ -204,7 +201,7 @@ public sealed class InstancesViewModel : ObservableObject
 
         if (installed)
         {
-            MessageDialog.Show(
+            await MessageDialog.ShowAsync(
                 $"\"{instance.Name}\" was imported.",
                 $"{instance.Loader.DisplayName()} is installed. Minecraft itself is downloaded the first time it is launched.");
             return;
@@ -213,7 +210,7 @@ public sealed class InstancesViewModel : ObservableObject
         // Forge and NeoForge have no working installer yet, so an imported pack
         // on either of them arrives complete but unlaunchable. Saying so beats
         // letting it fail on the first Play.
-        MessageDialog.Show(
+        await MessageDialog.ShowAsync(
             $"\"{instance.Name}\" was imported, but its mod loader was not installed.",
             $"The pack wants {instance.Loader.DisplayName()}"
             + (instance.LoaderVersion is null ? string.Empty : " " + instance.LoaderVersion) + ".",

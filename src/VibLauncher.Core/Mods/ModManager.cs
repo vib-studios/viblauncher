@@ -189,7 +189,7 @@ public sealed class ModManager : IModManager
         _log.Info(Category, $"Installed \"{fileName}\" into \"{instance.Name}\" from a local file.");
 
         var mods = await ScanAsync(instance, cancellationToken).ConfigureAwait(false);
-        return mods.First(m => string.Equals(m.FilePath, target, StringComparison.OrdinalIgnoreCase));
+        return mods.First(m => string.Equals(m.FilePath, target, HostPlatform.PathComparison));
     }
 
     public async Task<ModInstallReport> InstallAsync(

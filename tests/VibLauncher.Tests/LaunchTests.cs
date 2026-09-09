@@ -138,6 +138,50 @@ public class MavenCoordinateTests
     public void RejectsAMalformedCoordinate(string coordinate) => Assert.Null(MavenCoordinate.ToPath(coordinate));
 }
 
+/// <summary>
+/// The platform-dependent pieces the natives tests build their metadata from.
+/// </summary>
+/// <remarks>
+/// Mojang publishes a different set of native classifiers per operating system,
+/// and the launcher chooses between them at runtime. A fixture with
+/// <c>natives-windows</c> written into it therefore only exercises the real code
+/// path on Windows, and passes vacuously everywhere else. Deriving the names
+/// from the running platform is what lets one suite cover all three.
+/// </remarks>
+internal static class NativesFixtures
+{
+    /// <summary>Mojang's name for the OS the suite is running on.</summary>
+    public static string ThisOs => RuleEvaluator.CurrentOsName;
+
+    /// <summary>An OS name that is definitely not this one.</summary>
+    public static string AnotherOs => ThisOs == "windows" ? "osx" : "windows";
+
+    /// <summary>The classifier naming the natives this machine can actually load.</summary>
+    public static string ThisClassifier => RuleEvaluator.CurrentNativesClassifier;
+
+    /// <summary>A classifier belonging to <see cref="AnotherOs"/>.</summary>
+    /// <remarks>
+    /// Spelled out rather than derived, because the os name and the classifier
+    /// disagree on macOS: the rule says <c>osx</c> and the jar says
+    /// <c>natives-macos</c>.
+    /// </remarks>
+    public static string AnotherClassifier => AnotherOs == "windows" ? "natives-windows" : "natives-macos";
+
+    /// <summary>
+    /// Every classifier this OS publishes for the same library, this machine's
+    /// among them.
+    /// </summary>
+    public static IReadOnlyList<string> SiblingClassifiers => ThisOs switch
+    {
+        "windows" => ["natives-windows", "natives-windows-x86", "natives-windows-arm64"],
+        "osx" => ["natives-macos", "natives-macos-arm64"],
+        _ => ["natives-linux", "natives-linux-arm32", "natives-linux-arm64"],
+    };
+
+    /// <summary>What <c>${arch}</c> resolves to for the JVM running the suite.</summary>
+    public static string ArchSuffix => Environment.Is64BitProcess ? "64" : "32";
+}
+
 public class RuleEvaluatorTests
 {
     private static Rule Rule(bool allow, string? os = null) =>
@@ -147,31 +191,38 @@ public class RuleEvaluatorTests
     public void NoRulesMeansAlwaysApplies() => Assert.True(RuleEvaluator.Applies([]));
 
     [Fact]
-    public void AWindowsOnlyLibraryApplies() =>
-        Assert.True(RuleEvaluator.Applies([Rule(allow: true, os: "windows")]));
+    public void ALibraryForThisPlatformApplies() =>
+        Assert.True(RuleEvaluator.Applies([Rule(allow: true, os: NativesFixtures.ThisOs)]));
 
     [Fact]
-    public void AMacOnlyLibraryDoesNotApply() =>
-        Assert.False(RuleEvaluator.Applies([Rule(allow: true, os: "osx")]));
+    public void ALibraryForAnotherPlatformDoesNotApply() =>
+        Assert.False(RuleEvaluator.Applies([Rule(allow: true, os: NativesFixtures.AnotherOs)]));
 
-    /// <summary>Allow-all followed by disallow-windows is how Mojang excludes a library here.</summary>
+    /// <summary>
+    /// Allow-all followed by a disallow for this OS is how Mojang excludes a
+    /// library here.
+    /// </summary>
     [Fact]
     public void TheLastMatchingRuleWins()
     {
-        Assert.False(RuleEvaluator.Applies([Rule(allow: true), Rule(allow: false, os: "windows")]));
-        Assert.True(RuleEvaluator.Applies([Rule(allow: false), Rule(allow: true, os: "windows")]));
+        Assert.False(RuleEvaluator.Applies(
+            [Rule(allow: true), Rule(allow: false, os: NativesFixtures.ThisOs)]));
+
+        Assert.True(RuleEvaluator.Applies(
+            [Rule(allow: false), Rule(allow: true, os: NativesFixtures.ThisOs)]));
     }
 
     /// <summary>
-    /// From 1.19 all three Windows native entries carry the same rule, with no
-    /// arch, and differ only by classifier. Rules alone therefore admit every
-    /// one of them.
+    /// From 1.19 every native entry for one OS carries the same rule, with no
+    /// arch, and they differ only by classifier. Rules alone therefore admit
+    /// every one of them.
     /// </summary>
     [Fact]
-    public void TheWindowsNativesRulesDoNotDistinguishArchitecture()
+    public void TheNativesRulesDoNotDistinguishArchitecture()
     {
-        // Exactly what Mojang publishes for org.lwjgl:lwjgl:3.3.1:natives-windows-x86.
-        Assert.True(RuleEvaluator.Applies([Rule(allow: true, os: "windows")]));
+        // Exactly what Mojang publishes for org.lwjgl:lwjgl:3.3.1:natives-windows-x86
+        // and for its natives-linux-arm64 counterpart.
+        Assert.True(RuleEvaluator.Applies([Rule(allow: true, os: NativesFixtures.ThisOs)]));
     }
 
     [Fact]
@@ -179,21 +230,31 @@ public class RuleEvaluatorTests
     {
         var mine = RuleEvaluator.CurrentNativesClassifier;
 
-        foreach (var classifier in new[] { "natives-windows", "natives-windows-x86", "natives-windows-arm64" })
+        // The suite's own platform has to be one of the classifiers on offer,
+        // or the assertion below would only ever check the negative case.
+        Assert.Contains(mine, NativesFixtures.SiblingClassifiers);
+
+        foreach (var classifier in NativesFixtures.SiblingClassifiers)
         {
             var name = "org.lwjgl:lwjgl:3.3.1:" + classifier;
             Assert.Equal(classifier != mine, RuleEvaluator.IsForeignNativesClassifier(name));
         }
     }
 
-    /// <summary>Non-Windows classifiers are already excluded by their os rule.</summary>
-    [Theory]
-    [InlineData("org.lwjgl:lwjgl:3.3.1:natives-linux")]
-    [InlineData("org.lwjgl:lwjgl:3.3.1:natives-macos-arm64")]
-    [InlineData("org.lwjgl:lwjgl:3.3.1")]
-    [InlineData("net.fabricmc:fabric-loader:0.19.5")]
-    public void OtherCoordinatesAreLeftAlone(string name) =>
-        Assert.False(RuleEvaluator.IsForeignNativesClassifier(name));
+    /// <summary>Another platform's classifiers are already excluded by their os rule.</summary>
+    [Fact]
+    public void OtherCoordinatesAreLeftAlone()
+    {
+        foreach (var name in new[]
+                 {
+                     "org.lwjgl:lwjgl:3.3.1:" + NativesFixtures.AnotherClassifier,
+                     "org.lwjgl:lwjgl:3.3.1",
+                     "net.fabricmc:fabric-loader:0.19.5",
+                 })
+        {
+            Assert.False(RuleEvaluator.IsForeignNativesClassifier(name));
+        }
+    }
 
     /// <summary>
     /// Demo mode is off, so the arguments guarded by it must be left out of the
@@ -336,8 +397,10 @@ public class VersionMetadataTests
     [Fact]
     public void ALegacyNativesOnlyLibraryIsQueuedForDownload()
     {
+        var classifier = NativesFixtures.ThisClassifier;
+
         var metadata = VersionMetadata.Parse(
-            """
+            $$"""
             {
               "id": "1.8.9",
               "libraries": [
@@ -345,15 +408,15 @@ public class VersionMetadataTests
                   "name": "org.lwjgl.lwjgl:lwjgl-platform:2.9.4-nightly-20150209",
                   "downloads": {
                     "classifiers": {
-                      "natives-windows": {
-                        "path": "org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-windows.jar",
+                      "{{classifier}}": {
+                        "path": "org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-{{classifier}}.jar",
                         "sha1": "ddd",
                         "size": 40,
-                        "url": "https://example.invalid/lwjgl-platform-natives-windows.jar"
+                        "url": "https://example.invalid/lwjgl-platform-{{classifier}}.jar"
                       }
                     }
                   },
-                  "natives": { "windows": "natives-windows" }
+                  "natives": { "{{NativesFixtures.ThisOs}}": "{{classifier}}" }
                 }
               ]
             }
@@ -365,7 +428,7 @@ public class VersionMetadataTests
         var downloads = MinecraftInstaller.LibraryDownloads(metadata).ToList();
 
         Assert.Single(downloads);
-        Assert.Equal("https://example.invalid/lwjgl-platform-natives-windows.jar", downloads[0].Url);
+        Assert.Equal($"https://example.invalid/lwjgl-platform-{classifier}.jar", downloads[0].Url);
     }
 
     /// <summary>
@@ -375,8 +438,12 @@ public class VersionMetadataTests
     [Fact]
     public void ResolvesTheArchPlaceholderInANativesKey()
     {
+        // The key in the classifiers map is the one ${arch} resolves to, so the
+        // artifact is only found if the substitution happened.
+        var resolved = $"{NativesFixtures.ThisClassifier}-{NativesFixtures.ArchSuffix}";
+
         var metadata = VersionMetadata.Parse(
-            """
+            $$"""
             {
               "id": "1.8.9",
               "libraries": [
@@ -384,15 +451,15 @@ public class VersionMetadataTests
                   "name": "net.java.jinput:jinput-platform:2.0.5",
                   "downloads": {
                     "classifiers": {
-                      "natives-windows-64": {
-                        "path": "net/java/jinput/jinput-platform/2.0.5/jinput-platform-2.0.5-natives-windows-64.jar",
+                      "{{resolved}}": {
+                        "path": "net/java/jinput/jinput-platform/2.0.5/jinput-platform-2.0.5-{{resolved}}.jar",
                         "sha1": "eee",
                         "size": 50,
                         "url": "https://example.invalid/jinput-natives.jar"
                       }
                     }
                   },
-                  "natives": { "windows": "natives-windows-${arch}" }
+                  "natives": { "{{NativesFixtures.ThisOs}}": "{{NativesFixtures.ThisClassifier}}-${arch}" }
                 }
               ]
             }
@@ -409,19 +476,21 @@ public class VersionMetadataTests
     [Fact]
     public void AModernNativesLibraryIsQueuedOnlyOnce()
     {
+        var classifier = NativesFixtures.ThisClassifier;
+
         var metadata = VersionMetadata.Parse(
-            """
+            $$"""
             {
               "id": "1.21.8",
               "libraries": [
                 {
-                  "name": "org.lwjgl:lwjgl:3.3.3:natives-windows",
+                  "name": "org.lwjgl:lwjgl:3.3.3:{{classifier}}",
                   "downloads": {
                     "artifact": {
-                      "path": "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows.jar",
+                      "path": "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-{{classifier}}.jar",
                       "sha1": "fff",
                       "size": 60,
-                      "url": "https://example.invalid/lwjgl-natives-windows.jar"
+                      "url": "https://example.invalid/lwjgl-{{classifier}}.jar"
                     }
                   }
                 }
@@ -433,12 +502,15 @@ public class VersionMetadataTests
         Assert.Single(MinecraftInstaller.LibraryDownloads(metadata));
     }
 
-    /// <summary>A library ruled out on Windows contributes nothing to fetch.</summary>
+    /// <summary>A library ruled out on this platform contributes nothing to fetch.</summary>
     [Fact]
     public void ALibraryForAnotherPlatformIsNotQueued()
     {
+        var os = NativesFixtures.AnotherOs;
+        var classifier = NativesFixtures.AnotherClassifier;
+
         var metadata = VersionMetadata.Parse(
-            """
+            $$"""
             {
               "id": "1.8.9",
               "libraries": [
@@ -446,14 +518,14 @@ public class VersionMetadataTests
                   "name": "org.lwjgl.lwjgl:lwjgl-platform:2.9.4-nightly-20150209",
                   "downloads": {
                     "classifiers": {
-                      "natives-osx": {
-                        "path": "org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar",
-                        "url": "https://example.invalid/lwjgl-platform-natives-osx.jar"
+                      "{{classifier}}": {
+                        "path": "org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-{{classifier}}.jar",
+                        "url": "https://example.invalid/lwjgl-platform-{{classifier}}.jar"
                       }
                     }
                   },
-                  "natives": { "osx": "natives-osx" },
-                  "rules": [{ "action": "allow", "os": { "name": "osx" } }]
+                  "natives": { "{{os}}": "{{classifier}}" },
+                  "rules": [{ "action": "allow", "os": { "name": "{{os}}" } }]
                 }
               ]
             }
@@ -504,45 +576,44 @@ public class VersionMetadataTests
     }
 
     /// <summary>
-    /// Only one Windows native per library may survive. All three unpack to the
-    /// same file names in one flat folder, so admitting more than one leaves
-    /// whichever was written last, and a 32-bit lwjgl.dll cannot be loaded by a
-    /// 64-bit JVM.
+    /// Only one native per library may survive. Every architecture's jar unpacks
+    /// to the same file names in one flat folder, so admitting more than one
+    /// leaves whichever was written last, and an x86 liblwjgl.so cannot be
+    /// loaded by an aarch64 JVM.
     /// </summary>
     [Fact]
     public void KeepsOnlyTheNativesForThisArchitecture()
     {
-        var metadata = VersionMetadata.Parse(
-            """
+        var siblings = NativesFixtures.SiblingClassifiers;
+        var os = NativesFixtures.ThisOs;
+
+        // Every sibling carries the identical rule, exactly as Mojang publishes
+        // them: the os and nothing else. Only the classifier tells them apart.
+        var libraries = string.Join(
+            ",\n",
+            siblings.Select(classifier => $$"""
+                {
+                  "name": "org.lwjgl:lwjgl:3.3.1:{{classifier}}",
+                  "downloads": { "artifact": { "path": "org/lwjgl/lwjgl/3.3.1/lwjgl-3.3.1-{{classifier}}.jar", "url": "https://example.invalid/{{classifier}}.jar" } },
+                  "rules": [{ "action": "allow", "os": { "name": "{{os}}" } }]
+                }
+                """));
+
+        var metadata = VersionMetadata.Parse($$"""
             {
               "id": "1.20.1",
-              "libraries": [
-                {
-                  "name": "org.lwjgl:lwjgl:3.3.1:natives-windows",
-                  "downloads": { "artifact": { "path": "org/lwjgl/lwjgl/3.3.1/lwjgl-3.3.1-natives-windows.jar", "url": "https://example.invalid/x64.jar" } },
-                  "rules": [{ "action": "allow", "os": { "name": "windows" } }]
-                },
-                {
-                  "name": "org.lwjgl:lwjgl:3.3.1:natives-windows-x86",
-                  "downloads": { "artifact": { "path": "org/lwjgl/lwjgl/3.3.1/lwjgl-3.3.1-natives-windows-x86.jar", "url": "https://example.invalid/x86.jar" } },
-                  "rules": [{ "action": "allow", "os": { "name": "windows" } }]
-                },
-                {
-                  "name": "org.lwjgl:lwjgl:3.3.1:natives-windows-arm64",
-                  "downloads": { "artifact": { "path": "org/lwjgl/lwjgl/3.3.1/lwjgl-3.3.1-natives-windows-arm64.jar", "url": "https://example.invalid/arm64.jar" } },
-                  "rules": [{ "action": "allow", "os": { "name": "windows" } }]
-                }
-              ]
+              "libraries": [ {{libraries}} ]
             }
             """);
 
-        Assert.Equal(3, metadata.Libraries.Count);
+        Assert.Equal(siblings.Count, metadata.Libraries.Count);
 
         var applicable = MinecraftInstaller.ApplicableLibraries(metadata).ToList();
         Assert.Single(applicable);
         Assert.EndsWith(RuleEvaluator.CurrentNativesClassifier, applicable[0].Name, StringComparison.Ordinal);
 
-        // And so exactly one jar is fetched, not three that overwrite each other.
+        // And so exactly one jar is fetched, not one per architecture, which
+        // would have them overwrite each other in the natives folder.
         Assert.Single(MinecraftInstaller.LibraryDownloads(metadata));
     }
 

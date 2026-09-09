@@ -1,0 +1,378 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="VibLauncher.App.Views.InstancesPage"
+             FontFamily="{StaticResource SansFont}">
+
+    <UserControl.Resources>
+        <!-- The log view is a plain scrolling list of lines: no selection, no
+             hover, no row chrome, because a log line is not something to pick. -->
+        <ControlTheme x:Key="LogLine" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="6,1" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Margin="{TemplateBinding Padding}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <Grid ColumnDefinitions="284,*">
+
+        <!-- ========================== Instance list ========================== -->
+        <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="16,18,12,16">
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Theme="{StaticResource PageTitle}" Text="Instances" />
+                    <StackPanel Margin="0,14,0,14" Orientation="Horizontal">
+                        <Button Command="{Binding CreateCommand}"
+                                Content="Create"
+                                Theme="{StaticResource PrimaryButton}" />
+                        <Button Margin="8,0,0,0"
+                                Command="{Binding ImportCommand}"
+                                Content="Import"
+                                Theme="{StaticResource ClassicButton}"
+                                ToolTip.Tip="A .vibinstance export, a Modrinth .mrpack modpack, or a zip with a Minecraft folder in it." />
+                    </StackPanel>
+                </StackPanel>
+
+                <Panel>
+                    <ListBox ItemContainerTheme="{StaticResource ClassicListItem}"
+                             ItemsSource="{Binding Instances}"
+                             SelectedItem="{Binding Selected}"
+                             Theme="{StaticResource ClassicListBox}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock FontSize="13.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource HeadingBrush}"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="11.5"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               Text="{Binding Subtitle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Empty state: says what to do next rather than showing a
+                         blank panel. -->
+                    <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
+                        <TextBlock Theme="{StaticResource MutedText}"
+                                   Text="No Minecraft instances yet."
+                                   TextAlignment="Center" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Theme="{StaticResource MutedText}"
+                                   Foreground="{StaticResource FaintBrush}"
+                                   Text="Create one to pick a Minecraft version and a mod loader."
+                                   TextAlignment="Center" />
+                        <Button Margin="0,16,0,0"
+                                HorizontalAlignment="Center"
+                                Command="{Binding CreateCommand}"
+                                Content="Create instance"
+                                Theme="{StaticResource PrimaryButton}" />
+                    </StackPanel>
+                </Panel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================= Detail ============================== -->
+        <Panel Grid.Column="1" DataContext="{Binding Detail}">
+            <ScrollViewer Padding="26,22,26,22"
+                          VerticalScrollBarVisibility="Auto"
+                          IsVisible="{Binding Converter={StaticResource NotNull}}">
+                <StackPanel>
+
+                    <!-- Title row -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Theme="{StaticResource PageTitle}" Text="{Binding Name}" />
+                            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                                <Border Theme="{StaticResource Badge}">
+                                    <TextBlock FontFamily="{StaticResource MonoFont}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource EmberBrush}"
+                                               Text="{Binding MinecraftVersion}" />
+                                </Border>
+                                <Border Margin="7,0,0,0" Theme="{StaticResource Badge}">
+                                    <TextBlock FontFamily="{StaticResource MonoFont}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource EmberBrush}"
+                                               Text="{Binding LoaderText}" />
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Command="{Binding StopCommand}"
+                                    Content="Stop"
+                                    Theme="{StaticResource DangerButton}"
+                                    IsVisible="{Binding IsRunning}" />
+                            <Button Margin="10,0,0,0"
+                                    Command="{Binding PlayCommand}"
+                                    Content="{Binding PlayButtonText}"
+                                    Theme="{StaticResource PlayButton}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Stat strip -->
+                    <Border Margin="0,20,0,0" Theme="{StaticResource Card}">
+                        <!-- The status column carries a sentence rather than a
+                             number, so it gets the room the four figures do not
+                             need. -->
+                        <Grid ColumnDefinitions="0.85*,0.5*,0.7*,1.1*,2.1*">
+
+                            <StackPanel>
+                                <TextBlock Theme="{StaticResource FieldLabel}" Text="MINECRAFT" />
+                                <TextBlock Theme="{StaticResource StatValue}" Text="{Binding MinecraftVersion}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Theme="{StaticResource FieldLabel}" Text="MODS" />
+                                <TextBlock Theme="{StaticResource StatValue}" Text="{Binding ModCountText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Theme="{StaticResource FieldLabel}" Text="MEMORY" />
+                                <TextBlock Theme="{StaticResource StatValue}" Text="{Binding MemoryText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Theme="{StaticResource FieldLabel}" Text="ACCOUNT" />
+                                <TextBlock Theme="{StaticResource StatValue}"
+                                           FontSize="13.5"
+                                           Text="{Binding AccountText}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding AccountText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Theme="{StaticResource FieldLabel}" Text="STATUS" />
+                                <TextBlock Theme="{StaticResource StatValue}"
+                                           FontSize="13.5"
+                                           Text="{Binding InstallStateText}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Row actions -->
+                    <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+                        <Button Command="{Binding PrepareCommand}"
+                                Content="Prepare files"
+                                Theme="{StaticResource ClassicButton}"
+                                ToolTip.Tip="Download the Minecraft files this instance needs, without launching it." />
+                        <Button Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" Content="Open folder" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="8,0,0,0" Command="{Binding RenameCommand}" Content="Rename" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="8,0,0,0" Command="{Binding DuplicateCommand}" Content="Duplicate" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="8,0,0,0" Command="{Binding ExportCommand}" Content="Export" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="8,0,0,0" Command="{Binding DeleteCommand}" Content="Delete" Theme="{StaticResource DangerButton}" />
+                    </StackPanel>
+
+                    <!-- ============================ Tabs ============================ -->
+                    <TabControl Margin="0,26,0,0" Theme="{StaticResource ClassicTabControl}">
+
+                        <!-- ======== Mods ======== -->
+                        <TabItem Header="Mods">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" IsVisible="{Binding SupportsMods}">
+                                    <Button Command="{Binding BrowseModsCommand}" Content="Browse mods" Theme="{StaticResource PrimaryButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding InstallModFileCommand}" Content="Install from file" Theme="{StaticResource ClassicButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding CheckModUpdatesCommand}" Content="Check for updates" Theme="{StaticResource ClassicButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding OpenModsFolderCommand}" Content="Open mods folder" Theme="{StaticResource ClassicButton}" />
+                                </StackPanel>
+
+                                <TextBlock Margin="0,18,0,0"
+                                           Theme="{StaticResource MutedText}"
+                                           Text="{Binding ModsEmptyText}"
+                                           IsVisible="{Binding HasNoMods}" />
+
+                                <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Mods}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,8"
+                                                    Padding="14,11"
+                                                    Background="{StaticResource CardBrush}"
+                                                    BorderBrush="{StaticResource LineBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="{StaticResource ControlRadius}"
+                                                    Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacity}}">
+                                                <Grid ColumnDefinitions="*,Auto">
+
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock FontSize="13.5"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource HeadingBrush}"
+                                                                       Text="{Binding Name}" />
+                                                            <Border Margin="8,0,0,0"
+                                                                    Theme="{StaticResource Badge}"
+                                                                    IsVisible="{Binding AvailableUpdate, Converter={StaticResource NotNull}}">
+                                                                <TextBlock FontFamily="{StaticResource MonoFont}"
+                                                                           FontSize="10"
+                                                                           Foreground="{StaticResource EmberBrush}"
+                                                                           Text="update available" />
+                                                            </Border>
+                                                        </StackPanel>
+                                                        <TextBlock Margin="0,3,0,0"
+                                                                   FontFamily="{StaticResource MonoFont}"
+                                                                   FontSize="11.5"
+                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                   Text="{Binding Subtitle}" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <Button Command="{Binding $parent[ItemsControl].DataContext.UpdateModCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="Update"
+                                                                Theme="{StaticResource ClassicButton}"
+                                                                IsVisible="{Binding AvailableUpdate, Converter={StaticResource NotNull}}" />
+                                                        <Button Margin="8,0,0,0"
+                                                                Command="{Binding $parent[ItemsControl].DataContext.OpenModPageCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="View source"
+                                                                Theme="{StaticResource LinkButton}"
+                                                                IsVisible="{Binding PageUrl, Converter={StaticResource NotNull}}" />
+                                                        <Button Margin="8,0,0,0"
+                                                                Command="{Binding $parent[ItemsControl].DataContext.ToggleModCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="{Binding IsEnabled, Converter={StaticResource BoolToToggleText}}"
+                                                                Theme="{StaticResource ClassicButton}" />
+                                                        <Button Margin="8,0,0,0"
+                                                                Command="{Binding $parent[ItemsControl].DataContext.RemoveModCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="Remove"
+                                                                Theme="{StaticResource DangerButton}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- ======== Settings ======== -->
+                        <TabItem Header="Settings">
+                            <StackPanel>
+                                <Border Theme="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Theme="{StaticResource SectionTitle}" Text="Version" />
+                                        <TextBlock Margin="0,8,0,0"
+                                                   Theme="{StaticResource MutedText}"
+                                                   Text="Changing the Minecraft version or the mod loader keeps the instance's mods, configuration and worlds in place." />
+                                        <Button Margin="0,14,0,0"
+                                                HorizontalAlignment="Left"
+                                                Command="{Binding ChangeVersionCommand}"
+                                                Content="Change version or loader"
+                                                Theme="{StaticResource ClassicButton}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Theme="{StaticResource SectionTitle}" Text="Java and memory" />
+
+                                        <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="JAVA RUNTIME" />
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <ComboBox HorizontalAlignment="Stretch"
+                                                      ItemsSource="{Binding JavaRuntimes}"
+                                                      SelectedItem="{Binding SelectedJava}"
+                                                      Theme="{StaticResource ClassicComboBox}" />
+                                            <Button Grid.Column="1"
+                                                    Margin="8,0,0,0"
+                                                    Command="{Binding BrowseJavaCommand}"
+                                                    Content="Browse"
+                                                    Theme="{StaticResource ClassicButton}" />
+                                        </Grid>
+                                        <TextBlock Margin="0,7,0,0"
+                                                   Theme="{StaticResource MonoText}"
+                                                   Foreground="{StaticResource FaintBrush}"
+                                                   Text="{Binding RequiredJavaText}" />
+
+                                        <Grid Margin="0,16,0,0" ColumnDefinitions="*,14,*">
+                                            <StackPanel>
+                                                <TextBlock Theme="{StaticResource FieldLabel}" Text="MINIMUM MEMORY (MB)" />
+                                                <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding MinMemoryMb}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Theme="{StaticResource FieldLabel}" Text="MAXIMUM MEMORY (MB)" />
+                                                <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding MaxMemoryMb}" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="JVM ARGUMENTS" />
+                                        <TextBox AcceptsReturn="True"
+                                                 MinHeight="62"
+                                                 Theme="{StaticResource ClassicTextBox}"
+                                                 Text="{Binding JvmArguments}"
+                                                 TextWrapping="Wrap" />
+
+                                        <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="NOTES" />
+                                        <TextBox AcceptsReturn="True"
+                                                 MinHeight="56"
+                                                 Theme="{StaticResource ClassicTextBox}"
+                                                 Text="{Binding Notes}"
+                                                 TextWrapping="Wrap" />
+
+                                        <Button Margin="0,18,0,0"
+                                                HorizontalAlignment="Left"
+                                                Command="{Binding SaveSettingsCommand}"
+                                                Content="Save changes"
+                                                Theme="{StaticResource PrimaryButton}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Theme="{StaticResource SectionTitle}" Text="Folders" />
+                                        <WrapPanel Margin="0,14,0,0">
+                                            <Button Margin="0,0,8,8" Command="{Binding OpenSavesFolderCommand}" Content="Saves" Theme="{StaticResource ClassicButton}" />
+                                            <Button Margin="0,0,8,8" Command="{Binding OpenResourcePacksCommand}" Content="Resource packs" Theme="{StaticResource ClassicButton}" />
+                                            <Button Margin="0,0,8,8" Command="{Binding OpenShaderPacksCommand}" Content="Shader packs" Theme="{StaticResource ClassicButton}" />
+                                            <Button Margin="0,0,8,8" Command="{Binding OpenScreenshotsCommand}" Content="Screenshots" Theme="{StaticResource ClassicButton}" />
+                                            <Button Margin="0,0,8,8" Command="{Binding OpenLogsFolderCommand}" Content="Logs" Theme="{StaticResource ClassicButton}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- ======== Logs ======== -->
+                        <TabItem Header="Logs">
+                            <Border Theme="{StaticResource Card}" Padding="4">
+                                <ListBox MaxHeight="420"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ItemContainerTheme="{StaticResource LogLine}"
+                                         ItemsSource="{Binding LogLines}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock FontFamily="{StaticResource MonoFont}"
+                                                       FontSize="11.5"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </TabItem>
+                    </TabControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Nothing selected: only reachable when the list is empty. -->
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Theme="{StaticResource MutedText}"
+                       Text="Select an instance, or create one to get started."
+                       IsVisible="{Binding $parent[UserControl].DataContext.HasSelection,
+                                           Converter={StaticResource InverseBool}}" />
+        </Panel>
+    </Grid>
+</UserControl>

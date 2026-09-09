@@ -1,13 +1,15 @@
 # Vib-launcher
 
-A native Windows Minecraft launcher and vib-MC server control panel, built by Vib Studios.
+A native Minecraft launcher and vib-MC server control panel, built by Vib Studios. Linux is the
+platform it is developed and tested on; the same codebase builds and runs on Windows, with the
+caveat below.
 
 Vib-launcher manages isolated Minecraft instances, Microsoft and offline accounts, mod loaders,
 mods from Modrinth, and local [vib-MC](https://github.com/vib-studios/vib-MC) servers, in one
 desktop application wearing the Vib Studios Classic theme.
 
-It is a real WPF application. There is no browser, no WebView and no embedded web page anywhere in
-it.
+It is a real Avalonia application. There is no browser, no WebView, no Electron and no embedded web
+page anywhere in it.
 
 ---
 
@@ -15,11 +17,35 @@ it.
 
 | | |
 |---|---|
-| OS | Windows 10 20H1 or newer, 64-bit |
-| To run | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
-| To build | .NET 10 SDK |
+| OS | Linux (x86-64 or aarch64). Windows 10 20H1 or newer, 64-bit, builds and is expected to work but is not tested - see [Platform support](#platform-support). |
+| To run | [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). On Arch: `dotnet-runtime-10.0` |
+| To build | .NET 10 SDK. On Arch: `dotnet-sdk-10.0` |
 | To play | A Java runtime. Which one depends on the Minecraft version: Java 8 for 1.16 and older, 17 for 1.18, 21 for 1.20.5 and newer. The launcher detects what is installed and says which is needed. |
 | To run a server | Java 8 or newer, per vib-MC's own requirement |
+| Recommended on Linux | `libsecret` and a running keyring, so Microsoft tokens go to the desktop keyring rather than to a file. See [Accounts](#accounts). |
+
+On a Wayland session the launcher runs under XWayland, which is Avalonia's default and what its X11
+backend targets.
+
+### Platform support
+
+**Linux is the supported platform. Windows may lag behind it.**
+
+Everyone working on Vib-launcher has moved to Linux, so there is nobody left who runs Windows day to
+day and no Windows machine in the loop. The Windows build is still part of the codebase and is not
+deliberately broken - the launcher is one Avalonia application with no per-platform UI, and the
+places that genuinely differ (token storage, path layout, process handling) are written for both and
+covered by the test suite, which is platform-agnostic and runs headless.
+
+What is missing is somebody actually starting it on Windows. So:
+
+- Windows changes are reasoned about, compiled and unit-tested, but not run.
+- A Windows-only regression can land without anyone noticing, and may sit unnoticed for a release.
+- Windows bug reports are welcome and will be fixed, but the fix is likely to be written blind and
+  will need the reporter to confirm it.
+
+If you use Vib-launcher on Windows and would like to keep it healthy, testing releases is the single
+most useful thing you can contribute.
 
 Nothing from Minecraft is bundled. Client jars, libraries and assets are fetched from Mojang's own
 distribution endpoints and verified against the hashes Mojang publishes with them.
@@ -30,19 +56,33 @@ distribution endpoints and verified against the hashes Mojang publishes with the
 dotnet run --project src/VibLauncher.App
 ```
 
-Or build once and run the executable:
+Or build once and run the binary:
 
 ```
 dotnet build -c Release
-src\VibLauncher.App\bin\Release\net10.0-windows\VibLauncher.exe
+./src/VibLauncher.App/bin/Release/net10.0/VibLauncher
 ```
 
 For a build that runs on a machine with no .NET installed:
 
 ```
-dotnet publish src/VibLauncher.App -c Release -r win-x64 --self-contained ^
+dotnet publish src/VibLauncher.App -c Release -r linux-x64 --self-contained \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
+
+Use `-r win-x64` for the same thing on Windows.
+
+### Installing on Arch
+
+```
+cd packaging/arch
+makepkg -si
+```
+
+That builds from the tagged release, runs the test suite, and installs to `/usr/lib/viblauncher`
+with a `viblauncher` wrapper on `PATH`, a desktop entry and hicolor icons. `libsecret` and
+`xdg-utils` are optional dependencies rather than hard ones: the launcher works without either, with
+a weaker token store and no "open folder" button respectively.
 
 ## Tests
 
@@ -59,7 +99,9 @@ and credential redaction. They need no network: the download tests stand up a lo
 
 ## Where things are kept
 
-Everything lives under `%APPDATA%\VibLauncher`:
+Everything lives under the platform's application data directory: `$XDG_DATA_HOME/VibLauncher` on
+Linux, which is `~/.local/share/VibLauncher` unless `XDG_DATA_HOME` says otherwise, and
+`%APPDATA%\VibLauncher` on Windows.
 
 ```
 VibLauncher/
@@ -89,9 +131,9 @@ data root is a one-line change.
 ## Architecture
 
 ```
-VibLauncher.App              WPF. Views, view models, theme. No launcher logic.
+VibLauncher.App              Avalonia. Views, view models, theme. No launcher logic.
       │
-      ├── VibLauncher.Core              The domain and its rules. No network, no UI, no Windows APIs.
+      ├── VibLauncher.Core              The domain and its rules. No network, no UI, no platform APIs.
       │     Instances, Accounts, Mods, ModLoaders, Servers, Downloads, Java, Minecraft,
       │     Configuration, Diagnostics, Common
       │
@@ -163,9 +205,26 @@ Microsoft accounts use the device-code flow: Microsoft identity, then Xbox Live,
 Minecraft services. **The launcher never sees a Microsoft password.** It shows a code, the user signs in
 on Microsoft's own page, and the launcher polls until it is done.
 
-`accounts.json` holds only names, UUIDs and expiry times. Tokens go to a separate store encrypted with
-DPAPI under the current Windows user, and every log line passes through a redaction filter on the way
-out, so a token cannot reach a log even inside an exception message.
+`accounts.json` holds only names, UUIDs and expiry times. Tokens go to a separate store, and every log
+line passes through a redaction filter on the way out, so a token cannot reach a log even inside an
+exception message.
+
+Where that store is depends on what the machine offers, and the Accounts page says which one is in
+use rather than leaving it to the log:
+
+| | |
+|---|---|
+| Windows | DPAPI, encrypted for the current Windows user. |
+| Linux with a keyring | The desktop keyring, through the freedesktop Secret Service API. gnome-keyring, KWallet and KeePassXC all implement it; the launcher talks to whichever is running, via libsecret's `secret-tool`. |
+| Linux without one | `launcher-data/tokens.dat`, mode `0600`, encrypted with AES-GCM under a key derived from the machine id and the user id. |
+
+The fallback is deliberately precise about what it protects. The file mode is what stops another user
+account on the machine reading it; the encryption is what stops a copy of the file — out of a backup,
+a synced home directory or a cloned disk image — decrypting anywhere else. What it does not claim is
+protection from something already running as you, because on a keyring-less system there is nowhere to
+hide a key from a process that is already you. That is the same boundary DPAPI draws, and it is why
+the keyring is preferred wherever there is one. Install `libsecret` and run a Secret Service provider
+to get it.
 
 Microsoft sign-in needs an Azure application (client) id. One is deliberately **not** compiled in: a
 client id is public rather than secret, but it belongs to whoever ships a build. Set it in
@@ -264,6 +323,14 @@ Stated plainly rather than hidden behind a disabled button:
   The fields show what is actually known rather than invented numbers.
 - Resource packs, shader packs, saves and screenshots are reachable through folder buttons rather than
   in-app managers.
+- **Windows is untested.** It builds from the same sources and the shared logic is covered by the
+  tests, but no one on the project runs Windows any more, so nothing on it is verified by hand. See
+  [Platform support](#platform-support).
+- **On Linux the launcher runs under XWayland on a Wayland session.** Avalonia's X11 backend is what
+  it targets; there is no native Wayland backend in this build.
+- **The Linux keyring is reached through libsecret's `secret-tool`**, not a hand-written D-Bus client.
+  Without `libsecret` installed the launcher falls back to the machine-bound file store even when a
+  keyring is running, and says so on the Accounts page.
 
 ## The Classic theme
 
@@ -280,9 +347,16 @@ oklch and converted to sRGB in `Themes/Classic.Palette.xaml` with the originals 
 | `ember-300` | `oklch(80% .16 45)` | `#FF9960` | hover |
 | `ember-500` | `oklch(64% .19 40)` | `#E65719` | pressed |
 
-Every WPF control is retemplated: the stock chrome is light-themed and rounded in a different idiom.
-Icons are vector paths on a 16-unit grid, never an icon font and never emoji, so nothing depends on a
-typeface being installed. The title bar is darkened through DWM so it matches the window.
+Every control with a shape of its own is retemplated: the stock chrome is light-themed and rounded in
+a different idiom. The ones whose templates carry real machinery — the text box, the combo box, the
+scroll bar and the tree — keep the Fluent template and are restyled through `/template/` selectors
+instead, which is the same result for four colours rather than a rebuild. Icons are vector paths on a
+16-unit grid, never an icon font and never emoji, so nothing depends on a typeface being installed.
+
+The type stack names Space Grotesk, JetBrains Mono and Press Start 2P first and then falls back
+through what a desktop actually ships, so an install with none of the three still reads correctly.
+Window decorations are the window manager's on Linux and follow the requested dark variant on
+Windows; the launcher does not draw its own title bar.
 
 One deliberate departure from the site: its buttons are pills, which read as a web control on the
 desktop, so buttons here use the same 6px radius as the inputs beside them.

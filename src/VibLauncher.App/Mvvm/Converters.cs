@@ -1,39 +1,19 @@
+// The value converters the views bind through.
+//
+// There are fewer of these than the WPF views needed. Avalonia hides an element
+// with a boolean IsVisible rather than a three-state Visibility enum, so a view
+// model's own bool binds straight to it and the three visibility converters that
+// used to sit here are gone. What is left is the cases where the bound value
+// genuinely is not what the property wants: a negation, a null test, and the two
+// that map a state onto a colour or a label.
+
 using System.Globalization;
-using System.Windows;
-using System.Windows.Data;
-using System.Windows.Media;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace VibLauncher.App.Mvvm;
-
-/// <summary>Shows an element when the bound value is <c>true</c>.</summary>
-public sealed class BoolToVisibility : IValueConverter
-{
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is true ? Visibility.Visible : Visibility.Collapsed;
-
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is Visibility.Visible;
-}
-
-/// <summary>Shows an element when the bound value is <c>false</c>.</summary>
-public sealed class InverseBoolToVisibility : IValueConverter
-{
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is true ? Visibility.Collapsed : Visibility.Visible;
-
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is not Visibility.Visible;
-}
-
-/// <summary>Shows an element when the bound value is not <c>null</c>.</summary>
-public sealed class NotNullToVisibility : IValueConverter
-{
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is null ? Visibility.Collapsed : Visibility.Visible;
-
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        throw new NotSupportedException();
-}
 
 /// <summary>Inverts a boolean, for binding an "enabled" state to a "busy" flag.</summary>
 public sealed class InverseBool : IValueConverter
@@ -41,6 +21,15 @@ public sealed class InverseBool : IValueConverter
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not true;
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not true;
+}
+
+/// <summary>Shows an element when the bound value is not <c>null</c>.</summary>
+public sealed class NotNull : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not null;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
 }
 
 /// <summary>
@@ -62,6 +51,12 @@ public sealed class BoolToOpacity : IValueConverter
 /// <summary>
 /// Colours a status dot: ember while starting, green while running, red on a crash.
 /// </summary>
+/// <remarks>
+/// The brush is looked up from the application's resources rather than written
+/// out here, so the status colours stay in the palette dictionary with the rest.
+/// Avalonia resolves a resource against the theme variant in force, which for
+/// this application is always Dark.
+/// </remarks>
 public sealed class StateToBrush : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -77,7 +72,12 @@ public sealed class StateToBrush : IValueConverter
             _ => "DisabledBrush",
         };
 
-        return Application.Current.TryFindResource(key) as Brush ?? Brushes.Gray;
+        if (Application.Current?.TryFindResource(key, out var brush) == true && brush is IBrush found)
+        {
+            return found;
+        }
+
+        return Brushes.Gray;
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>

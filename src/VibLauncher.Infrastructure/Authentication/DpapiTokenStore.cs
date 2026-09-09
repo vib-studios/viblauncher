@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -17,7 +18,12 @@ namespace VibLauncher.Infrastructure.Authentication;
 /// user on this one. Nothing is ever written in the clear, and a file that fails
 /// to decrypt is treated as absent, which forces a fresh sign-in rather than a
 /// confusing error.
+/// <para>
+/// Windows only. <see cref="TokenStores.Create"/> is what decides, and picks
+/// the keyring or the machine-bound file elsewhere.
+/// </para>
 /// </remarks>
+[SupportedOSPlatform("windows")]
 public sealed class DpapiTokenStore : ITokenStore
 {
     private const string Category = "Accounts";
@@ -101,15 +107,6 @@ public sealed class DpapiTokenStore : ITokenStore
             return new Dictionary<string, AccountTokens>(StringComparer.Ordinal);
         }
 
-        // DPAPI is a Windows facility. Vib-launcher is a Windows application, so
-        // this only ever matters when the assembly is loaded by a test run on
-        // another platform, and refusing to read is the safe answer there.
-        if (!OperatingSystem.IsWindows())
-        {
-            _log.Error(Category, "Encrypted token storage is not available on this platform.");
-            return new Dictionary<string, AccountTokens>(StringComparer.Ordinal);
-        }
-
         try
         {
             var encrypted = await File.ReadAllBytesAsync(file, cancellationToken).ConfigureAwait(false);
@@ -130,24 +127,10 @@ public sealed class DpapiTokenStore : ITokenStore
             _log.Warn(Category, "The token store could not be read and has been reset.");
             return new Dictionary<string, AccountTokens>(StringComparer.Ordinal);
         }
-        catch (PlatformNotSupportedException)
-        {
-            // DPAPI is Windows-only. The launcher is a Windows application, but
-            // this keeps the failure explicit rather than a crash on a test run.
-            _log.Error(Category, "Encrypted token storage is not available on this platform.");
-            return new Dictionary<string, AccountTokens>(StringComparer.Ordinal);
-        }
     }
 
     private async Task WriteAllAsync(Dictionary<string, AccountTokens> tokens, CancellationToken cancellationToken)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            // Writing tokens unencrypted is never an acceptable fallback.
-            throw new PlatformNotSupportedException(
-                "Vib-launcher only stores account tokens on Windows, where they can be encrypted for the current user.");
-        }
-
         Directory.CreateDirectory(_paths.LauncherDataDirectory);
 
         var plain = JsonSerializer.SerializeToUtf8Bytes(tokens, JsonDefaults.Options);

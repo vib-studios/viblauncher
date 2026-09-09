@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using VibLauncher.App.Mvvm;
 using VibLauncher.App.Services;
 using VibLauncher.App.Views.Dialogs;

@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VibLauncher.App.Views.Dialogs.CreateInstanceDialog"
+        Title="Vib-launcher"
+        Width="520"
+        Background="{StaticResource SurfaceBrush}"
+        FontFamily="{StaticResource SansFont}"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SizeToContent="Height"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Padding="26">
+        <StackPanel>
+            <TextBlock x:Name="Headline" Theme="{StaticResource PageTitle}" Text="Create instance" />
+            <TextBlock x:Name="Subhead"
+                       Margin="0,8,0,0"
+                       Theme="{StaticResource MutedText}"
+                       Text="Minecraft and the mod loader are downloaded from their own publishers." />
+
+            <!-- Name -->
+            <TextBlock Margin="0,22,0,0" Theme="{StaticResource FieldLabel}" Text="NAME" />
+            <TextBox x:Name="NameBox" Theme="{StaticResource ClassicTextBox}" />
+
+            <!-- Minecraft version -->
+            <Grid Margin="0,18,0,0" ColumnDefinitions="*,Auto">
+                <TextBlock Theme="{StaticResource FieldLabel}" Text="MINECRAFT VERSION" />
+                <CheckBox x:Name="SnapshotsBox"
+                          Grid.Column="1"
+                          Margin="0,-4,0,0"
+                          Click="OnSnapshotsToggled"
+                          Content="Show snapshots"
+                          FontSize="12"
+                          Theme="{StaticResource ClassicCheckBox}" />
+            </Grid>
+            <ComboBox x:Name="VersionBox"
+                      HorizontalAlignment="Stretch"
+                      MaxDropDownHeight="300"
+                      SelectionChanged="OnVersionChanged"
+                      Theme="{StaticResource ClassicComboBox}" />
+
+            <!-- Mod loader -->
+            <TextBlock Margin="0,18,0,0" Theme="{StaticResource FieldLabel}" Text="MOD LOADER" />
+            <ComboBox x:Name="LoaderBox"
+                      HorizontalAlignment="Stretch"
+                      SelectionChanged="OnLoaderChanged"
+                      Theme="{StaticResource ClassicComboBox}" />
+
+            <!-- Loader version -->
+            <StackPanel x:Name="LoaderVersionPanel" IsVisible="False">
+                <TextBlock Margin="0,18,0,0" Theme="{StaticResource FieldLabel}" Text="LOADER VERSION" />
+                <ComboBox x:Name="LoaderVersionBox"
+                          HorizontalAlignment="Stretch"
+                          MaxDropDownHeight="260"
+                          Theme="{StaticResource ClassicComboBox}" />
+            </StackPanel>
+
+            <!-- Anything the launcher cannot do with this combination is said
+                 here, rather than by letting Create fail later. -->
+            <Border x:Name="NoticePanel"
+                    Margin="0,16,0,0"
+                    Padding="12,10"
+                    Background="{StaticResource EmberWashBrush}"
+                    BorderBrush="{StaticResource EmberEdgeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource ControlRadius}"
+                    IsVisible="False">
+                <TextBlock x:Name="NoticeText"
+                           FontSize="12"
+                           Foreground="{StaticResource BodyBrush}"
+                           Theme="{StaticResource BodyText}"
+                           Text="" />
+            </Border>
+
+            <StackPanel Margin="0,24,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        MinWidth="100"
+                        Click="OnCancel"
+                        Content="Cancel"
+                        IsCancel="True"
+                        Theme="{StaticResource ClassicButton}" />
+                <Button x:Name="ConfirmButton"
+                        MinWidth="110"
+                        Click="OnConfirm"
+                        Content="Create"
+                        IsDefault="True"
+                        Theme="{StaticResource PrimaryButton}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

@@ -184,16 +184,20 @@ public sealed class VersionMetadata
                 }
 
                 // Pre-1.19 versions keep native jars in a classifiers map keyed by
-                // the name the natives block points at.
+                // the name this platform's entry in the natives block points at.
                 if (downloads.TryGetProperty("classifiers", out var classifiers)
                     && library.TryGetProperty("natives", out var nativesMap)
-                    && nativesMap.TryGetProperty("windows", out var windowsKey)
-                    && windowsKey.GetString() is { } classifierName)
+                    && nativesMap.TryGetProperty(HostPlatform.MojangOsName, out var osKey)
+                    && osKey.GetString() is { } classifierName)
                 {
-                    // Mojang writes ${arch} for the 32/64-bit split. The launcher
-                    // only supports 64-bit Windows, which is all current runtimes
-                    // ship for anyway.
-                    classifierName = classifierName.Replace("${arch}", "64", StringComparison.Ordinal);
+                    // Mojang writes ${arch} for the 32/64-bit split, which only
+                    // the old lwjgl 2 entries still carry. It is the JVM's word
+                    // size that decides, not the kernel's: a 32-bit JVM on a
+                    // 64-bit machine needs the 32-bit natives.
+                    classifierName = classifierName.Replace(
+                        "${arch}",
+                        Environment.Is64BitProcess ? "64" : "32",
+                        StringComparison.Ordinal);
 
                     if (classifiers.TryGetProperty(classifierName, out var nativeElement))
                     {
@@ -214,8 +218,14 @@ public sealed class VersionMetadata
             }
 
             // Post-1.19 versions express natives as ordinary libraries whose
-            // coordinate carries a natives-windows classifier.
-            if (natives is null && artifact is not null && name.Contains(":natives-windows", StringComparison.Ordinal))
+            // coordinate carries a natives-<os> classifier. The prefix has to be
+            // this platform's: matching only natives-windows leaves a Linux
+            // install with an empty natives folder and a JVM that cannot find
+            // liblwjgl, which surfaces as an unsatisfied link rather than as a
+            // missing file.
+            if (natives is null
+                && artifact is not null
+                && name.Contains(":" + HostPlatform.NativesClassifierPrefix, StringComparison.Ordinal))
             {
                 natives = artifact;
             }

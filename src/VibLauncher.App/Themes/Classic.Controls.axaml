@@ -1,0 +1,636 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Control themes.
+
+        The stock Fluent chrome is rounded in a different idiom and coloured for
+        a light desktop, so every control the launcher uses is restyled. The
+        shapes come from the site: a hairline border, a void-900 fill, ember on
+        hover, and a one-pixel lift on the press. The one deliberate departure is
+        the corner radius: the site's buttons are pills, which read as a web
+        control on the desktop, so buttons here use the same 6px radius as the
+        inputs beside them.
+
+        Two techniques appear below, and which one a control gets is a judgement
+        about how much of its shape is ours. A button, a check box, a list row
+        and a tab are a border and a content presenter, so those are retemplated
+        outright. A text box, a combo box, a scroll bar and a tree have real
+        machinery inside their templates - text presenters, popups, virtualising
+        panels - that is not worth rebuilding to change four colours, so those
+        keep the Fluent template and are restyled through /template/ selectors.
+
+        WPF's triggers have no equivalent here: state is expressed as a
+        pseudo-class on a selector instead, so IsMouseOver becomes :pointerover,
+        IsPressed becomes :pressed, and so on. "^" is the templated control.
+    -->
+
+    <!-- ================================ Card ================================ -->
+
+    <ControlTheme x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource CardRadius}" />
+        <Setter Property="Padding" Value="18" />
+    </ControlTheme>
+
+    <!-- The ember-washed badge from the site's hero. -->
+    <ControlTheme x:Key="Badge" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource EmberWashBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EmberEdgeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="7,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </ControlTheme>
+
+    <!-- =============================== Buttons =============================== -->
+
+    <ControlTheme x:Key="ClassicButton" TargetType="Button">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Chrome"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource ControlRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      RecognizesAccessKey="True" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource EmberHoverBrush}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Chrome">
+            <Setter Property="BorderBrush" Value="{StaticResource EmberPressedBrush}" />
+            <!-- The site lifts a button 1px on hover. -->
+            <Setter Property="RenderTransform">
+                <TranslateTransform Y="-1" />
+            </Setter>
+        </Style>
+
+        <Style Selector="^:pressed /template/ Border#Chrome">
+            <Setter Property="RenderTransform">
+                <TranslateTransform Y="1" />
+            </Setter>
+        </Style>
+
+        <Style Selector="^:focus-visible /template/ Border#Chrome">
+            <Setter Property="BorderBrush" Value="{StaticResource EmberBrush}" />
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{StaticResource DisabledBrush}" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#Chrome">
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ClassicButton}">
+        <Setter Property="Background" Value="{StaticResource EmberBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EmberBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource SurfaceBrush}" />
+
+        <!-- The base theme tints the label ember on hover, which is invisible on
+             an ember fill. The fill lightens instead. -->
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource SurfaceBrush}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Chrome">
+            <Setter Property="Background" Value="{StaticResource EmberHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource EmberHoverBrush}" />
+        </Style>
+
+        <Style Selector="^:disabled /template/ Border#Chrome">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+    </ControlTheme>
+
+    <!-- The full-width Play button on an instance's overview. -->
+    <ControlTheme x:Key="PlayButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Padding" Value="26,12" />
+    </ControlTheme>
+
+    <!-- Destructive actions. Ember is the affirmative accent, so delete gets its
+         own colour rather than borrowing it. -->
+    <ControlTheme x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ClassicButton}">
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Chrome">
+            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <!-- A borderless text action, for the quieter row actions. -->
+    <ControlTheme x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource ClassicButton}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+        <Setter Property="Padding" Value="8,4" />
+    </ControlTheme>
+
+    <!-- ============================== Text input =============================
+         Restyled rather than retemplated: the Fluent template carries the text
+         presenter, the caret, the selection layer and the watermark, none of
+         which is worth rebuilding to change a border colour.
+    -->
+
+    <ControlTheme x:Key="ClassicTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource EmberBrush}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource EmberWashBrush}" />
+        <Setter Property="SelectionForegroundBrush" Value="{StaticResource HeadingBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource ControlRadius}" />
+        <Setter Property="Padding" Value="9,7" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+
+        <!-- Fluent paints the border element from its own theme resources, so
+             the control's Background and BorderBrush have to be pushed onto it
+             explicitly rather than relying on a template binding. -->
+        <Style Selector="^ /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="CornerRadius" Value="{StaticResource ControlRadius}" />
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DisabledBrush}" />
+        </Style>
+
+        <Style Selector="^:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource EmberBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style Selector="^ /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource DisabledBrush}" />
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{StaticResource DisabledBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <!-- ============================== Check box ============================== -->
+
+    <ControlTheme x:Key="ClassicCheckBox" TargetType="CheckBox">
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Background="Transparent" Orientation="Horizontal">
+                    <Border Name="Box"
+                            Width="16"
+                            Height="16"
+                            VerticalAlignment="Center"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource LineBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <Panel>
+                            <Path Name="Tick"
+                                  Width="9"
+                                  Height="9"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Data="M0,4 L3.2,7.2 L9,0.8"
+                                  IsVisible="False"
+                                  Stretch="Uniform"
+                                  Stroke="{StaticResource SurfaceBrush}"
+                                  StrokeLineCap="Round"
+                                  StrokeThickness="2" />
+
+                            <!-- The half-state: used by the export picker for a
+                                 folder with only some of its files selected. -->
+                            <Rectangle Name="Dash"
+                                       Width="8"
+                                       Height="2"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Fill="{StaticResource EmberBrush}"
+                                       IsVisible="False"
+                                       RadiusX="1"
+                                       RadiusY="1" />
+                        </Panel>
+                    </Border>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Margin="9,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource EmberBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource EmberBrush}" />
+        </Style>
+        <Style Selector="^:checked /template/ Path#Tick">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="^:indeterminate /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource EmberWashBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource EmberEdgeBrush}" />
+        </Style>
+        <Style Selector="^:indeterminate /template/ Rectangle#Dash">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource EmberPressedBrush}" />
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{StaticResource DisabledBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ Border#Box">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+    </ControlTheme>
+
+    <!-- ============================== Combo box ============================== -->
+
+    <ControlTheme x:Key="ClassicComboBoxItem" TargetType="ComboBoxItem">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Chrome"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="4"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource EmberHoverBrush}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Chrome">
+            <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+        </Style>
+
+        <Style Selector="^:selected">
+            <Setter Property="Foreground" Value="{StaticResource EmberBrush}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#Chrome">
+            <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <!--
+        Every combo row is one trimmed line.
+
+        Without this a value whose text runs long, or an object whose ToString
+        prints more than a label, turns a dropdown into a wall of text and makes
+        the rows impossible to aim at. The template binds the item itself, so it
+        works for anything with a sensible ToString.
+    -->
+    <DataTemplate x:Key="ComboRowTemplate">
+        <TextBlock Text="{Binding}"
+                   TextTrimming="CharacterEllipsis"
+                   TextWrapping="NoWrap" />
+    </DataTemplate>
+
+    <ControlTheme x:Key="ClassicComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource ControlRadius}" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="PlaceholderForeground" Value="{StaticResource DisabledBrush}" />
+        <Setter Property="ItemContainerTheme" Value="{StaticResource ClassicComboBoxItem}" />
+        <Setter Property="ItemTemplate" Value="{StaticResource ComboRowTemplate}" />
+
+        <!-- Fluent names the chrome "Background" and the chevron
+             "DropDownGlyph"; the popup's frame is "PopupBorder". -->
+        <Style Selector="^ /template/ Border#Background">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource ControlRadius}" />
+        </Style>
+
+        <Style Selector="^ /template/ PathIcon#DropDownGlyph">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{StaticResource EmberPressedBrush}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ PathIcon#DropDownGlyph">
+            <Setter Property="Foreground" Value="{StaticResource EmberHoverBrush}" />
+        </Style>
+
+        <Style Selector="^:pressed /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{StaticResource EmberBrush}" />
+        </Style>
+
+        <Style Selector="^ /template/ Border#PopupBorder">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource ControlRadius}" />
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{StaticResource DisabledBrush}" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+    </ControlTheme>
+
+    <!-- ============================= Progress bar ============================ -->
+
+    <ControlTheme x:Key="ClassicProgressBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="6" />
+        <Setter Property="MinHeight" Value="6" />
+        <Setter Property="Foreground" Value="{StaticResource EmberBrush}" />
+        <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        ClipToBounds="True"
+                        CornerRadius="3">
+                    <Panel>
+                        <Border Name="PART_Indicator"
+                                Background="{TemplateBinding Foreground}"
+                                CornerRadius="3"
+                                HorizontalAlignment="Left" />
+                    </Panel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <!--
+            The indeterminate bar.
+
+            A determinate bar is sized by the control itself, which writes a width
+            onto PART_Indicator as the value changes. An indeterminate one is not:
+            the control only publishes the geometry through TemplateSettings and
+            leaves it to the theme to size the indicator and sweep it across the
+            track. Without this the indicator stays zero-wide, so the progress
+            dialog and the device-code dialog show an empty groove.
+        -->
+        <Style Selector="^:indeterminate /template/ Border#PART_Indicator">
+            <Setter Property="Width"
+                    Value="{Binding $parent[ProgressBar].TemplateSettings.ContainerWidth}" />
+            <Setter Property="RenderTransform">
+                <TranslateTransform />
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:2" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="TranslateTransform.X"
+                                Value="{Binding $parent[ProgressBar].TemplateSettings.ContainerAnimationStartPosition}" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="TranslateTransform.X"
+                                Value="{Binding $parent[ProgressBar].TemplateSettings.ContainerAnimationEndPosition}" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </ControlTheme>
+
+    <!-- =============================== List box ============================== -->
+
+    <ControlTheme x:Key="ClassicListBox" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter Name="PART_ItemsPresenter"
+                                        Margin="{TemplateBinding Padding}"
+                                        ItemsPanel="{TemplateBinding ItemsPanel}" />
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <!-- The row used by the instance and server lists: a card that turns ember
+         on the left edge when it is the selected one. -->
+    <ControlTheme x:Key="ClassicListItem" TargetType="ListBoxItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <Border Name="Chrome"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource ControlRadius}"
+                            Padding="12,10">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                    </Border>
+                    <Rectangle Name="Marker"
+                               Width="2"
+                               Margin="0,8"
+                               HorizontalAlignment="Left"
+                               Fill="{StaticResource EmberBrush}"
+                               IsVisible="False"
+                               RadiusX="1"
+                               RadiusY="1" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:pointerover /template/ Border#Chrome">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        </Style>
+
+        <Style Selector="^:selected /template/ Border#Chrome">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        </Style>
+        <Style Selector="^:selected /template/ Rectangle#Marker">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+    </ControlTheme>
+
+    <!-- =============================== Tabs ================================= -->
+
+    <ControlTheme x:Key="ClassicTabItem" TargetType="TabItem">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Chrome"
+                        Margin="0,0,20,0"
+                        Padding="2,0,2,9"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="0,0,0,2">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Header}"
+                                      ContentTemplate="{TemplateBinding HeaderTemplate}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        </Style>
+
+        <Style Selector="^:selected">
+            <Setter Property="Foreground" Value="{StaticResource EmberBrush}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#Chrome">
+            <Setter Property="BorderBrush" Value="{StaticResource EmberBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="ClassicTabControl" TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ItemContainerTheme" Value="{StaticResource ClassicTabItem}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Border DockPanel.Dock="Top"
+                            BorderBrush="{StaticResource LineBrush}"
+                            BorderThickness="0,0,0,1">
+                        <ItemsPresenter Name="PART_ItemsPresenter"
+                                        Margin="0,0,0,-1"
+                                        ItemsPanel="{TemplateBinding ItemsPanel}" />
+                    </Border>
+                    <ContentPresenter Name="PART_SelectedContentHost"
+                                      Margin="0,18,0,0"
+                                      Content="{TemplateBinding SelectedContent}"
+                                      ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <!-- =============================== Tree =================================
+         Used by the export picker, which is the one place the launcher shows a
+         folder hierarchy. Restyled rather than retemplated: the Fluent tree item
+         carries the indentation, the chevron rotation and the items host, and
+         all this needs is for the row to light up like a list row and the
+         chevron to turn ember.
+    -->
+
+    <ControlTheme x:Key="ClassicTreeViewItem" TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0,2" />
+
+        <!-- The export picker drives expansion from the node, so a branch the
+             view model opens opens on screen too. -->
+        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+
+        <Style Selector="^ /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        </Style>
+
+        <!-- Selection is not a concept in the picker: the check boxes are what
+             carries the choice, so a selected row must not look different. -->
+        <Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        </Style>
+
+        <Style Selector="^ /template/ ToggleButton#PART_ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{StaticResource FaintBrush}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ ToggleButton#PART_ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{StaticResource EmberBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="ClassicTreeView" TargetType="TreeView" BasedOn="{StaticResource {x:Type TreeView}}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ItemContainerTheme" Value="{StaticResource ClassicTreeViewItem}" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    </ControlTheme>
+
+</ResourceDictionary>

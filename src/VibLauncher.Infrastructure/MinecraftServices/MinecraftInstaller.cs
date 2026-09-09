@@ -193,7 +193,7 @@ public sealed class MinecraftInstaller : IMinecraftInstaller
     /// </remarks>
     internal static IEnumerable<DownloadArtifact> LibraryDownloads(VersionMetadata metadata)
     {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(HostPlatform.PathComparer);
 
         foreach (var library in ApplicableLibraries(metadata))
         {
@@ -363,7 +363,7 @@ public sealed class MinecraftInstaller : IMinecraftInstaller
                             // Flattened deliberately: the JVM's java.library.path
                             // does not search subdirectories.
                             var target = PathSafety.ResolveWithin(natives, Path.GetFileName(entry.FullName));
-                            entry.ExtractToFile(target, overwrite: true);
+                            ExtractNative(entry, target);
                         }
                     }
                     catch (InvalidDataException ex)
@@ -379,6 +379,58 @@ public sealed class MinecraftInstaller : IMinecraftInstaller
                 }
             },
             cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Writes one native out, replacing any previous copy without truncating it.
+    /// </summary>
+    /// <remarks>
+    /// The obvious <c>ExtractToFile(overwrite: true)</c> truncates the file in
+    /// place, and on Linux that succeeds even while another instance has the
+    /// library mapped: the running game keeps the same inode and reads whatever
+    /// lands in it next, which is a segfault rather than a clean failure.
+    /// (Windows refuses the open instead, which is why this only ever showed up
+    /// as the IOException the caller logs.) Writing a new file and renaming it
+    /// over the old one leaves the running process on the old inode, which is
+    /// the behaviour every package manager relies on.
+    /// </remarks>
+    private static void ExtractNative(ZipArchiveEntry entry, string target)
+    {
+        var temp = target + ".new";
+
+        try
+        {
+            entry.ExtractToFile(temp, overwrite: true);
+
+            // Native libraries are loaded, not executed, so the mode only has to
+            // let the owner read and write it back on the next launch.
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    temp,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite
+                    | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+            }
+
+            File.Move(temp, target, overwrite: true);
+        }
+        catch
+        {
+            // A half-written temp file must not be left where a later run could
+            // mistake it for a finished native.
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            throw;
+        }
     }
 
     /// <summary>

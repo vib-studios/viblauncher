@@ -1,0 +1,143 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="VibLauncher.App.Views.SettingsPage"
+             FontFamily="{StaticResource SansFont}">
+
+    <ScrollViewer Padding="26,22,26,22" VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="820" HorizontalAlignment="Left">
+            <TextBlock Theme="{StaticResource PageTitle}" Text="Settings" />
+
+            <!-- ============================ General ============================ -->
+            <Border Margin="0,20,0,0" Theme="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Theme="{StaticResource SectionTitle}" Text="General" />
+
+                    <CheckBox Margin="0,16,0,0"
+                              Content="Ask before deleting an instance, a server or a mod"
+                              IsChecked="{Binding ConfirmDeletion}"
+                              Theme="{StaticResource ClassicCheckBox}" />
+                    <CheckBox Margin="0,12,0,0"
+                              Content="Start Vib-launcher minimised"
+                              IsChecked="{Binding StartMinimized}"
+                              Theme="{StaticResource ClassicCheckBox}" />
+                    <CheckBox Margin="0,12,0,0"
+                              Content="Show Minecraft snapshots in the version picker"
+                              IsChecked="{Binding ShowSnapshots}"
+                              Theme="{StaticResource ClassicCheckBox}" />
+                </StackPanel>
+            </Border>
+
+            <!-- =========================== Minecraft =========================== -->
+            <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Theme="{StaticResource SectionTitle}" Text="Minecraft" />
+                    <TextBlock Margin="0,8,0,0"
+                               Theme="{StaticResource MutedText}"
+                               Text="Defaults for newly created instances. Changing them does not touch instances that already exist." />
+
+                    <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="DEFAULT JAVA RUNTIME" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding JavaRuntimes}"
+                                  SelectedItem="{Binding DefaultJava}"
+                                  Theme="{StaticResource ClassicComboBox}" />
+                        <Button Grid.Column="1"
+                                Margin="8,0,0,0"
+                                Command="{Binding RefreshJavaCommand}"
+                                Content="Rescan"
+                                Theme="{StaticResource ClassicButton}" />
+                    </Grid>
+                    <TextBlock Margin="0,7,0,0"
+                               Theme="{StaticResource MonoText}"
+                               Foreground="{StaticResource FaintBrush}"
+                               Text="{Binding JavaSummary}" />
+
+                    <Grid Margin="0,16,0,0" ColumnDefinitions="*,14,*">
+                        <StackPanel>
+                            <TextBlock Theme="{StaticResource FieldLabel}" Text="DEFAULT MINIMUM MEMORY (MB)" />
+                            <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding DefaultMinMemoryMb}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Theme="{StaticResource FieldLabel}" Text="DEFAULT MAXIMUM MEMORY (MB)" />
+                            <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding DefaultMaxMemoryMb}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="DEFAULT JVM ARGUMENTS" />
+                    <TextBox AcceptsReturn="True"
+                             MinHeight="60"
+                             Theme="{StaticResource ClassicTextBox}"
+                             Text="{Binding DefaultJvmArguments}"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- =========================== Downloads =========================== -->
+            <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Theme="{StaticResource SectionTitle}" Text="Downloads" />
+
+                    <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="CONCURRENT DOWNLOADS" />
+                    <TextBox MaxWidth="120"
+                             HorizontalAlignment="Left"
+                             Theme="{StaticResource ClassicTextBox}"
+                             Text="{Binding ConcurrentDownloads}" />
+                    <TextBlock Margin="0,7,0,0"
+                               Theme="{StaticResource MonoText}"
+                               Foreground="{StaticResource FaintBrush}"
+                               Text="A Minecraft install is thousands of small files, so more at once is usually faster." />
+                </StackPanel>
+            </Border>
+
+            <!-- ============================ Accounts =========================== -->
+            <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Theme="{StaticResource SectionTitle}" Text="Accounts" />
+                    <TextBlock Margin="0,8,0,0"
+                               Theme="{StaticResource MutedText}"
+                               Text="Microsoft sign-in needs an Azure application id. It identifies this build to Microsoft and is not a secret, but it has to belong to whoever ships the launcher, so none is compiled in." />
+
+                    <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="AZURE APPLICATION (CLIENT) ID" />
+                    <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding MicrosoftClientId}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Theme="{StaticResource MutedText}"
+                               Foreground="{StaticResource FaintBrush}"
+                               Text="{Binding MicrosoftStatus}" />
+
+                    <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="TOKEN STORAGE" />
+                    <TextBlock Theme="{StaticResource MutedText}"
+                               Foreground="{StaticResource FaintBrush}"
+                               Text="{Binding TokenStorageText}" />
+                </StackPanel>
+            </Border>
+
+            <!-- ============================ Advanced =========================== -->
+            <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Theme="{StaticResource SectionTitle}" Text="Advanced" />
+
+                    <CheckBox Margin="0,16,0,0"
+                              Content="Record debug detail in the launcher log"
+                              IsChecked="{Binding DebugLogging}"
+                              Theme="{StaticResource ClassicCheckBox}" />
+
+                    <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="DATA DIRECTORY" />
+                    <TextBlock Theme="{StaticResource MonoText}" Text="{Binding DataDirectory}" TextWrapping="Wrap" />
+
+                    <WrapPanel Margin="0,14,0,0">
+                        <Button Margin="0,0,8,8" Command="{Binding OpenDataFolderCommand}" Content="Open data folder" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="0,0,8,8" Command="{Binding OpenInstancesFolderCommand}" Content="Instances" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="0,0,8,8" Command="{Binding OpenServersFolderCommand}" Content="Servers" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="0,0,8,8" Command="{Binding OpenBackupsFolderCommand}" Content="Backups" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="0,0,8,8" Command="{Binding OpenLogsFolderCommand}" Content="Launcher logs" Theme="{StaticResource ClassicButton}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Margin="0,18,0,0" Orientation="Horizontal">
+                <Button Command="{Binding SaveCommand}" Content="Save settings" Theme="{StaticResource PrimaryButton}" />
+                <Button Margin="8,0,0,0" Command="{Binding ResetCommand}" Content="Reset to defaults" Theme="{StaticResource DangerButton}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

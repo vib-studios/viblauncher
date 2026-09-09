@@ -3,6 +3,7 @@ using VibLauncher.App.Mvvm;
 using VibLauncher.App.Services;
 using VibLauncher.App.Views.Dialogs;
 using VibLauncher.Core.Accounts;
+using VibLauncher.Infrastructure.Authentication;
 
 namespace VibLauncher.App.ViewModels;
 
@@ -58,6 +59,14 @@ public sealed class AccountsViewModel : ObservableObject
 
     public string? MicrosoftHint => _services.MicrosoftAuth.ConfigurationHint;
 
+    /// <summary>Where this machine keeps the tokens a Microsoft sign-in produces.</summary>
+    /// <remarks>
+    /// Fixed for the life of the process: the store is chosen once, at startup,
+    /// by <see cref="TokenStores.Create"/>, so this cannot change while the page
+    /// is open.
+    /// </remarks>
+    public string TokenStorageText { get; } = TokenStores.DescribeStorage();
+
     public void Refresh()
     {
         var selectedId = _selected?.Id;
@@ -79,7 +88,7 @@ public sealed class AccountsViewModel : ObservableObject
     {
         if (!_services.MicrosoftAuth.IsConfigured)
         {
-            MessageDialog.Show(
+            await MessageDialog.ShowAsync(
                 "Microsoft sign-in is not configured yet.",
                 null,
                 _services.MicrosoftAuth.ConfigurationHint);
@@ -101,7 +110,7 @@ public sealed class AccountsViewModel : ObservableObject
 
     private async Task AddOfflineAsync()
     {
-        var name = TextPromptDialog.Ask(
+        var name = await TextPromptDialog.AskAsync(
             "Add offline account",
             "username",
             string.Empty,
@@ -148,7 +157,7 @@ public sealed class AccountsViewModel : ObservableObject
             ? "The stored session is deleted from this machine. Nothing changes on the Microsoft account itself."
             : "The local profile is removed. Any world saved under its name stays where it is.";
 
-        if (!MessageDialog.Confirm($"Remove \"{account.Username}\"?", body, "Remove account", isDestructive: true))
+        if (!await MessageDialog.ConfirmAsync($"Remove \"{account.Username}\"?", body, "Remove account", isDestructive: true))
         {
             return;
         }

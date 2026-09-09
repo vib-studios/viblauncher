@@ -14,10 +14,12 @@ public sealed record AccountTokens(string MinecraftAccessToken, string Microsoft
 /// Encrypted storage for account tokens.
 /// </summary>
 /// <remarks>
-/// Kept as an interface so Core stays free of Windows-specific APIs. The real
-/// implementation lives in Infrastructure and encrypts with DPAPI under the
-/// current user, which means the token file is useless if copied to another
-/// machine or opened by another account.
+/// Kept as an interface so Core stays free of platform-specific APIs. The
+/// implementations live in Infrastructure, and which one is used depends on what
+/// the machine offers: DPAPI on Windows, the desktop keyring through the
+/// freedesktop Secret Service elsewhere, and a machine-bound encrypted file when
+/// there is no keyring to talk to. All three share the property that the stored
+/// file is useless if copied to another machine or opened by another user.
 /// </remarks>
 public interface ITokenStore
 {

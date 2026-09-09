@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Windows;
 using VibLauncher.App.Mvvm;
 using VibLauncher.App.Services;
 using VibLauncher.App.Views;
@@ -72,7 +71,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
         SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync, () => SettingsDirty, MessageDialog.ShowError);
         ChangeVersionCommand = new AsyncRelayCommand(ChangeVersionAsync, onError: MessageDialog.ShowError);
-        BrowseJavaCommand = new RelayCommand(BrowseJava);
+        BrowseJavaCommand = new AsyncRelayCommand(BrowseJavaAsync, onError: MessageDialog.ShowError);
 
         _services.MinecraftLauncher.SessionsChanged += OnSessionsChanged;
 
@@ -133,7 +132,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
     public AsyncRelayCommand ChangeVersionCommand { get; }
 
-    public RelayCommand BrowseJavaCommand { get; }
+    public AsyncRelayCommand BrowseJavaCommand { get; }
 
     // ------------------------------------------------------------------ overview
 
@@ -367,7 +366,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
         var account = _services.Accounts.Active;
         if (account is null)
         {
-            if (MessageDialog.Confirm(
+            if (await MessageDialog.ConfirmAsync(
                     "No account is selected.",
                     "Minecraft needs a profile to launch with. Add a Microsoft account, or an offline one for servers that allow it.",
                     "Go to Accounts"))
@@ -451,7 +450,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
             return;
         }
 
-        if (!MessageDialog.Confirm(
+        if (!await MessageDialog.ConfirmAsync(
                 $"Close \"{Instance.Name}\"?",
                 "Minecraft will be ended the same way as closing its window. Anything not yet saved to the world may be lost.",
                 "Close Minecraft",
@@ -541,14 +540,19 @@ public sealed class InstanceDetailViewModel : ObservableObject
             Detach();
             RaiseRunState();
 
-            if (crashed)
+            if (!crashed)
             {
-                MessageDialog.Show(
-                    $"\"{Instance.Name}\" stopped unexpectedly.",
-                    $"Minecraft exited with code {exitCode}.",
-                    "The Logs tab has the game's output, and the full log is in the instance's logs folder.",
-                    isError: true);
+                return;
             }
+
+            // Not awaited, and it cannot be: this runs from the game process's
+            // exit event, posted to the dispatcher, with nothing above it to
+            // await into. Nothing depends on the dialog having been dismissed.
+            _ = MessageDialog.ShowAsync(
+                $"\"{Instance.Name}\" stopped unexpectedly.",
+                $"Minecraft exited with code {exitCode}.",
+                "The Logs tab has the game's output, and the full log is in the instance's logs folder.",
+                isError: true);
         });
 
     private void OnSessionsChanged(object? sender, EventArgs e) => UiThread.Post(RaiseRunState);
@@ -606,7 +610,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
     private async Task RenameAsync()
     {
-        var name = TextPromptDialog.Ask(
+        var name = await TextPromptDialog.AskAsync(
             "Rename instance",
             "name",
             Instance.Name,
@@ -643,10 +647,10 @@ public sealed class InstanceDetailViewModel : ObservableObject
             return;
         }
 
-        var file = NativeShell.PickSaveFile(
+        var file = await NativeShell.PickSaveFileAsync(
             "Export instance",
-            "Vib-launcher instance (*.vibinstance)|*.vibinstance",
-            PathSafety.ToSafeSegment(Instance.Name, "instance") + ".vibinstance");
+            [NativeShell.FileTypes.InstanceArchive],
+            PathSafety.ToSafeSegment(Instance.Name, "instance") + ".vibinstance").ConfigureAwait(true);
 
         if (file is null)
         {
@@ -663,7 +667,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
         if (completed)
         {
-            MessageDialog.Show(
+            await MessageDialog.ShowAsync(
                 $"\"{Instance.Name}\" was exported.",
                 file,
                 "Minecraft's own files are not included: they are downloaded again on import, from Mojang.");
@@ -680,7 +684,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
         }
 
         if (_services.Settings.Current.ConfirmDeletion
-            && !MessageDialog.Confirm(
+            && !await MessageDialog.ConfirmAsync(
                 $"Delete \"{Instance.Name}\"?",
                 "Its mods, configuration, worlds and screenshots are deleted with it. This cannot be undone.",
                 "Delete instance",
@@ -705,7 +709,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
     private async Task InstallModFileAsync()
     {
-        var file = NativeShell.PickFile("Install a mod", "Mod jar (*.jar)|*.jar");
+        var file = await NativeShell.PickFileAsync("Install a mod", [NativeShell.FileTypes.ModJar]).ConfigureAwait(true);
         if (file is null)
         {
             return;
@@ -734,7 +738,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
         }
 
         if (_services.Settings.Current.ConfirmDeletion
-            && !MessageDialog.Confirm(
+            && !await MessageDialog.ConfirmAsync(
                 $"Remove \"{mod.Name}\"?",
                 "The jar is deleted from this instance's mods folder. Disabling it instead keeps the file.",
                 "Remove mod",
@@ -764,7 +768,7 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
             var tracked = Mods.Count(m => m.IsTracked);
 
-            MessageDialog.Show(
+            await MessageDialog.ShowAsync(
                 outdated.Count == 0
                     ? "Everything is up to date."
                     : $"{outdated.Count} mod{(outdated.Count == 1 ? " has" : "s have")} an update.",
@@ -809,9 +813,12 @@ public sealed class InstanceDetailViewModel : ObservableObject
 
     // ------------------------------------------------------------------ settings
 
-    private void BrowseJava()
+    private async Task BrowseJavaAsync()
     {
-        var file = NativeShell.PickFile("Choose a Java runtime", "Java launcher (java.exe)|java.exe|Executable (*.exe)|*.exe");
+        var file = await NativeShell
+            .PickFileAsync("Choose a Java runtime", [NativeShell.FileTypes.JavaLauncher])
+            .ConfigureAwait(true);
+
         if (file is null)
         {
             return;

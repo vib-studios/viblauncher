@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="VibLauncher.App.Views.DownloadsPage"
+             FontFamily="{StaticResource SansFont}">
+
+    <UserControl.Resources>
+        <!-- A download is a card that reports on itself, not a row to select,
+             so the container adds nothing but the stretch. -->
+        <ControlTheme x:Key="DownloadRow" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Stretch" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <DockPanel Margin="26,22,26,22">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Theme="{StaticResource PageTitle}" Text="Downloads" />
+            <TextBlock Margin="0,8,0,0" Theme="{StaticResource MutedText}" Text="{Binding Summary}" />
+
+            <StackPanel Margin="0,16,0,16" Orientation="Horizontal">
+                <Button Command="{Binding CancelAllCommand}" Content="Cancel all" Theme="{StaticResource ClassicButton}" />
+                <Button Margin="8,0,0,0" Command="{Binding ClearFinishedCommand}" Content="Clear finished" Theme="{StaticResource ClassicButton}" />
+                <Button Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" Content="Open downloads folder" Theme="{StaticResource ClassicButton}" />
+            </StackPanel>
+        </StackPanel>
+
+        <Panel>
+            <TextBlock HorizontalAlignment="Left"
+                       VerticalAlignment="Top"
+                       Theme="{StaticResource MutedText}"
+                       Foreground="{StaticResource FaintBrush}"
+                       Text="Minecraft files, mod loaders, mods and server jars all appear here as they are fetched."
+                       IsVisible="{Binding IsEmpty}" />
+
+            <ListBox Background="Transparent"
+                     BorderThickness="0"
+                     ItemContainerTheme="{StaticResource DownloadRow}"
+                     ItemsSource="{Binding Items}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,8"
+                                Padding="14,11"
+                                Background="{StaticResource CardBrush}"
+                                BorderBrush="{StaticResource LineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource ControlRadius}">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+
+                                <StackPanel Grid.Row="0" Grid.Column="0">
+                                    <TextBlock FontFamily="{StaticResource MonoFont}"
+                                               FontSize="12.5"
+                                               Foreground="{StaticResource HeadingBrush}"
+                                               Text="{Binding DisplayName}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Theme="{StaticResource MonoText}"
+                                               Foreground="{StaticResource FaintBrush}"
+                                               Text="{Binding Category}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0"
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal">
+                                    <TextBlock VerticalAlignment="Center"
+                                               Theme="{StaticResource MonoText}"
+                                               Text="{Binding ProgressText}" />
+                                    <Button Margin="10,0,0,0"
+                                            Command="{Binding $parent[ListBox].DataContext.RetryCommand}"
+                                            CommandParameter="{Binding}"
+                                            Content="Retry"
+                                            Theme="{StaticResource LinkButton}" />
+                                    <Button Command="{Binding $parent[ListBox].DataContext.CancelCommand}"
+                                            CommandParameter="{Binding}"
+                                            Content="Cancel"
+                                            Theme="{StaticResource LinkButton}" />
+                                </StackPanel>
+
+                                <ProgressBar Grid.Row="1"
+                                             Grid.Column="0"
+                                             Grid.ColumnSpan="2"
+                                             Margin="0,10,0,0"
+                                             IsIndeterminate="{Binding IsIndeterminate}"
+                                             Maximum="1"
+                                             Theme="{StaticResource ClassicProgressBar}"
+                                             Value="{Binding Progress, Mode=OneWay}" />
+
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="0"
+                                           Grid.ColumnSpan="2"
+                                           Margin="0,10,0,0"
+                                           FontSize="11.5"
+                                           Foreground="{StaticResource DangerBrush}"
+                                           Theme="{StaticResource BodyText}"
+                                           Text="{Binding Error}"
+                                           IsVisible="{Binding Error, Converter={StaticResource NotNull}}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Panel>
+    </DockPanel>
+</UserControl>

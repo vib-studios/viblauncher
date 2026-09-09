@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 
 namespace VibLauncher.Core.Common;
@@ -12,7 +13,10 @@ namespace VibLauncher.Core.Common;
 /// </remarks>
 public static class PathSafety
 {
-    // Windows refuses these as file names regardless of extension.
+    // Windows refuses these as file names regardless of extension. They stay
+    // escaped on every platform: an instance directory or an exported zip is
+    // expected to survive being copied to a Windows machine, and a "CON" folder
+    // created on Linux would be unopenable there.
     private static readonly string[] ReservedNames =
     [
         "CON", "PRN", "AUX", "NUL",
@@ -20,11 +24,34 @@ public static class PathSafety
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
     ];
 
+    /// <summary>
+    /// The characters no file name may contain on any platform the launcher
+    /// runs on.
+    /// </summary>
+    /// <remarks>
+    /// Written out rather than taken from <see cref="Path.GetInvalidFileNameChars"/>,
+    /// which reports only the running platform's set: on Linux that is just
+    /// <c>/</c> and NUL, so a name with <c>?</c> or <c>:</c> in it would pass
+    /// here and then be unopenable the moment the instance folder or the export
+    /// reached a Windows machine. This is Windows' set, which is the strictest
+    /// of the three, plus the separators.
+    /// </remarks>
+    private static readonly SearchValues<char> InvalidNameCharacters =
+        SearchValues.Create("<>:\"/\\|?*");
+
     private const int MaxSegmentLength = 96;
 
     /// <summary>
-    /// Turns arbitrary text into a single path segment that is safe on Windows.
+    /// Turns arbitrary text into a single path segment that is safe on every
+    /// platform the launcher runs on.
     /// </summary>
+    /// <remarks>
+    /// The rules are Windows' rules, which are the strictest of the three, so a
+    /// name accepted here is usable everywhere. <c>/</c> is stripped for Linux's
+    /// sake and <c>\</c> and <c>:</c> for Windows', because
+    /// <see cref="Path.GetInvalidFileNameChars"/> only reports the current
+    /// platform's set and a name made on one is expected to work on the other.
+    /// </remarks>
     /// <param name="value">The text to convert, typically a user-supplied name.</param>
     /// <param name="fallback">Used when <paramref name="value"/> reduces to nothing.</param>
     public static string ToSafeSegment(string? value, string fallback = "unnamed")
@@ -34,12 +61,11 @@ public static class PathSafety
             return fallback;
         }
 
-        var invalid = Path.GetInvalidFileNameChars();
         var builder = new StringBuilder(value.Length);
 
         foreach (var ch in value.Trim())
         {
-            if (Array.IndexOf(invalid, ch) >= 0 || ch is '/' or '\\' or ':')
+            if (InvalidNameCharacters.Contains(ch))
             {
                 builder.Append('-');
             }
@@ -91,14 +117,23 @@ public static class PathSafety
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
 
         var fullRoot = Path.GetFullPath(root);
-        var combined = Path.GetFullPath(Path.Combine(fullRoot, relativePath));
+
+        // A backslash is a separator on Windows and an ordinary filename
+        // character on Linux, so "..\..\evil" traverses on one and does not on
+        // the other. Zip entries and downloaded metadata are written by whoever
+        // produced them, so both spellings are treated as a separator here and
+        // the same input is refused on every platform.
+        var combined = Path.GetFullPath(
+            Path.Combine(fullRoot, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
 
         var rootWithSeparator = fullRoot.EndsWith(Path.DirectorySeparatorChar)
             ? fullRoot
             : fullRoot + Path.DirectorySeparatorChar;
 
-        if (!combined.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(combined, fullRoot, StringComparison.OrdinalIgnoreCase))
+        // Case-sensitively on Linux, where "/home/x" and "/home/X" really are
+        // two different directories, and case-insensitively where they are not.
+        if (!combined.StartsWith(rootWithSeparator, HostPlatform.PathComparison)
+            && !string.Equals(combined, fullRoot, HostPlatform.PathComparison))
         {
             throw new LauncherException(
                 $"The path \"{relativePath}\" points outside of the folder it belongs to.",
