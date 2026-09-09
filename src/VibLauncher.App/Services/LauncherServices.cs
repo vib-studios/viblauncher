@@ -48,7 +48,10 @@ public sealed class LauncherServices : IDisposable
 
         Java = new JavaLocator(Log);
 
-        TokenStore = new DpapiTokenStore(Paths, Log);
+        // Which store this is depends on the platform and, on Linux, on
+        // whether a keyring is running. TokenStores decides and says so in
+        // the log.
+        TokenStore = TokenStores.Create(Paths, Log);
         MicrosoftAuth = new MicrosoftAuthService(http, Settings, Log);
         Accounts = new AccountManager(Paths, Settings, TokenStore, Log);
 

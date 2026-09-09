@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
-using System.Windows;
-using System.Windows.Threading;
+using Avalonia.Threading;
 using VibLauncher.App.Mvvm;
 using VibLauncher.App.Services;
 using VibLauncher.App.Views.Dialogs;
@@ -412,7 +411,7 @@ public sealed class ServerDetailViewModel : ObservableObject, IDisposable
 
         if (IsRunning && restartKeys.Count > 0)
         {
-            if (MessageDialog.Confirm(
+            if (await MessageDialog.ConfirmAsync(
                     "Some of those settings need a restart.",
                     $"{string.Join(", ", restartKeys)} are read when the server starts. " +
                     (previousPort != Server.Port
@@ -429,7 +428,7 @@ public sealed class ServerDetailViewModel : ObservableObject, IDisposable
     private async Task DeleteAsync()
     {
         if (_services.Settings.Current.ConfirmDeletion
-            && !MessageDialog.Confirm(
+            && !await MessageDialog.ConfirmAsync(
                 $"Delete \"{Server.Name}\"?",
                 "The server directory, including its worlds and configuration, is deleted. Backups are kept.",
                 "Delete server",
@@ -464,7 +463,7 @@ public sealed class ServerDetailViewModel : ObservableObject, IDisposable
                 "Stop the server before updating it. Worlds and settings are kept either way.");
         }
 
-        if (!MessageDialog.Confirm(
+        if (!await MessageDialog.ConfirmAsync(
                 $"Update to vib-MC {_latestRelease.Tag}?",
                 $"The server jar is replaced. Worlds, player data, plugins and server.properties are left alone. " +
                 $"A backup is made first.",
@@ -524,7 +523,7 @@ public sealed class ServerDetailViewModel : ObservableObject, IDisposable
                 "Stop the server before restoring a backup, or the running world will overwrite what is restored.");
         }
 
-        if (!MessageDialog.Confirm(
+        if (!await MessageDialog.ConfirmAsync(
                 $"Restore the backup from {backup.DisplayName}?",
                 "The current worlds are archived first, then replaced with the ones in this backup.",
                 "Restore",
@@ -553,7 +552,7 @@ public sealed class ServerDetailViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!MessageDialog.Confirm(
+        if (!await MessageDialog.ConfirmAsync(
                 $"Delete the backup from {backup.DisplayName}?",
                 "This cannot be undone.",
                 "Delete backup",

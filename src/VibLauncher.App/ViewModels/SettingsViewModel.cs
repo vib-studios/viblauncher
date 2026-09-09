@@ -3,6 +3,7 @@ using VibLauncher.App.Mvvm;
 using VibLauncher.App.Services;
 using VibLauncher.App.Views.Dialogs;
 using VibLauncher.Core.Java;
+using VibLauncher.Infrastructure.Authentication;
 
 namespace VibLauncher.App.ViewModels;
 
@@ -172,6 +173,15 @@ public sealed class SettingsViewModel : ObservableObject
 
     // ------------------------------------------------------------------ advanced
 
+    /// <summary>Where this machine keeps the tokens a Microsoft sign-in produces.</summary>
+    /// <remarks>
+    /// Fixed for the life of the process: the store is chosen once, at startup,
+    /// by <see cref="TokenStores.Create"/>. It is repeated here as well as on the
+    /// Accounts page because this is the section someone reads when they are
+    /// deciding whether to configure Microsoft sign-in at all.
+    /// </remarks>
+    public string TokenStorageText { get; } = TokenStores.DescribeStorage();
+
     public string DataDirectory => _services.Paths.RootDirectory;
 
     public string JavaSummary => JavaRuntimes.Count == 0
@@ -230,7 +240,7 @@ public sealed class SettingsViewModel : ObservableObject
 
     private async Task ResetAsync()
     {
-        if (!MessageDialog.Confirm(
+        if (!await MessageDialog.ConfirmAsync(
                 "Reset launcher settings?",
                 "Preferences go back to their defaults. Instances, servers, accounts, worlds and backups are not touched.",
                 "Reset settings",

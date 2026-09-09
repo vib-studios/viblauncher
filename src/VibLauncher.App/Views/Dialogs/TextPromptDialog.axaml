@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VibLauncher.App.Views.Dialogs.TextPromptDialog"
+        Title="Vib-launcher"
+        Width="430"
+        Background="{StaticResource SurfaceBrush}"
+        FontFamily="{StaticResource SansFont}"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SizeToContent="Height"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Padding="24">
+        <StackPanel>
+            <TextBlock x:Name="Headline" Theme="{StaticResource SectionTitle}" Text="Name" />
+
+            <TextBlock x:Name="Hint"
+                       Margin="0,8,0,0"
+                       Theme="{StaticResource MutedText}"
+                       Text=""
+                       IsVisible="False" />
+
+            <TextBlock x:Name="FieldName"
+                       Margin="0,16,0,0"
+                       Theme="{StaticResource FieldLabel}"
+                       Text="NAME" />
+            <TextBox x:Name="Input"
+                     KeyDown="OnInputKeyDown"
+                     Theme="{StaticResource ClassicTextBox}" />
+
+            <TextBlock x:Name="Error"
+                       Margin="0,8,0,0"
+                       FontSize="12"
+                       Foreground="{StaticResource DangerBrush}"
+                       Theme="{StaticResource BodyText}"
+                       Text=""
+                       IsVisible="False" />
+
+            <StackPanel Margin="0,22,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        MinWidth="96"
+                        Click="OnCancel"
+                        Content="Cancel"
+                        IsCancel="True"
+                        Theme="{StaticResource ClassicButton}" />
+                <Button x:Name="ConfirmButton"
+                        MinWidth="96"
+                        Click="OnConfirm"
+                        Content="Save"
+                        IsDefault="True"
+                        Theme="{StaticResource PrimaryButton}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

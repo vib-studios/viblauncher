@@ -1,0 +1,356 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="VibLauncher.App.Views.ServersPage"
+             FontFamily="{StaticResource SansFont}">
+
+    <UserControl.Resources>
+        <!-- Console output is a scrolling transcript, not a list of choices, so
+             its rows carry no selection or hover chrome. -->
+        <ControlTheme x:Key="ConsoleLine" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="6,1" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Margin="{TemplateBinding Padding}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <Grid ColumnDefinitions="284,*">
+
+        <!-- =========================== Server list =========================== -->
+        <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="16,18,12,16">
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Theme="{StaticResource PageTitle}" Text="Servers" />
+                    <TextBlock Margin="0,8,0,0"
+                               Theme="{StaticResource MutedText}"
+                               Text="Local vib-MC servers. Separate from your Minecraft instances." />
+                    <Button Margin="0,14,0,14"
+                            HorizontalAlignment="Left"
+                            Command="{Binding CreateCommand}"
+                            Content="Create server"
+                            Theme="{StaticResource PrimaryButton}" />
+                </StackPanel>
+
+                <Panel>
+                    <ListBox ItemContainerTheme="{StaticResource ClassicListItem}"
+                             ItemsSource="{Binding Servers}"
+                             SelectedItem="{Binding Selected}"
+                             Theme="{StaticResource ClassicListBox}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock FontSize="13.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource HeadingBrush}"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="11.5"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               Text="{Binding Subtitle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
+                        <TextBlock Theme="{StaticResource MutedText}"
+                                   Text="No servers yet."
+                                   TextAlignment="Center" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Theme="{StaticResource MutedText}"
+                                   Foreground="{StaticResource FaintBrush}"
+                                   Text="Create one to download vib-MC and run it on this machine."
+                                   TextAlignment="Center" />
+                    </StackPanel>
+                </Panel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================= Detail ============================== -->
+        <Panel Grid.Column="1" DataContext="{Binding Detail}">
+            <Grid Margin="26,22,26,22"
+                  RowDefinitions="Auto,Auto,Auto,*"
+                  IsVisible="{Binding Converter={StaticResource NotNull}}">
+
+                <!-- Title and controls -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <StackPanel>
+                        <TextBlock Theme="{StaticResource PageTitle}" Text="{Binding Name}" />
+                        <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                            <Ellipse Width="8"
+                                     Height="8"
+                                     VerticalAlignment="Center"
+                                     Fill="{Binding State, Converter={StaticResource StateToBrush}}" />
+                            <TextBlock Margin="9,0,0,0"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource MonoFont}"
+                                       FontSize="12.5"
+                                       Foreground="{StaticResource BodyBrush}"
+                                       Text="{Binding StateText}" />
+                            <TextBlock Margin="14,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Theme="{StaticResource MonoText}"
+                                       Text="{Binding AddressText}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Command="{Binding StartCommand}" Content="Start" Theme="{StaticResource PrimaryButton}" />
+                        <Button Margin="8,0,0,0" Command="{Binding RestartCommand}" Content="Restart" Theme="{StaticResource ClassicButton}" />
+                        <Button Margin="8,0,0,0" Command="{Binding StopCommand}" Content="Stop" Theme="{StaticResource DangerButton}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- A crash is stated, with a route to the log. -->
+                <Border Grid.Row="1"
+                        Margin="0,16,0,0"
+                        Padding="14,11"
+                        Background="{StaticResource CardBrush}"
+                        BorderBrush="{StaticResource DangerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource ControlRadius}"
+                        IsVisible="{Binding HasCrashed}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center"
+                                   Theme="{StaticResource BodyText}"
+                                   Text="{Binding CrashText}" />
+                        <Button Margin="14,0,0,0"
+                                Command="{Binding OpenLogsCommand}"
+                                Content="Open logs"
+                                Theme="{StaticResource ClassicButton}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Stat strip -->
+                <Border Grid.Row="2" Margin="0,16,0,0" Theme="{StaticResource Card}">
+                    <Grid ColumnDefinitions="*,*,*,*">
+                        <StackPanel>
+                            <TextBlock Theme="{StaticResource FieldLabel}" Text="VERSION" />
+                            <TextBlock Theme="{StaticResource StatValue}" Text="{Binding VersionText}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Theme="{StaticResource FieldLabel}" Text="ADDRESS" />
+                            <TextBlock Theme="{StaticResource StatValue}" FontSize="14" Text="{Binding AddressText}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Theme="{StaticResource FieldLabel}" Text="UPTIME" />
+                            <TextBlock Theme="{StaticResource StatValue}" FontSize="15" Text="{Binding UptimeText}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3">
+                            <TextBlock Theme="{StaticResource FieldLabel}" Text="MEMORY" />
+                            <TextBlock Theme="{StaticResource StatValue}" Text="{Binding MemoryText}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Tabs -->
+                <TabControl Grid.Row="3" Margin="0,22,0,0" Theme="{StaticResource ClassicTabControl}">
+
+                    <!-- ======== Console ======== -->
+                    <TabItem Header="Console">
+                        <DockPanel>
+                            <!-- Command entry, wired to the server's stdin. -->
+                            <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Theme="{StaticResource ClassicTextBox}"
+                                             Text="{Binding CommandText}">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Command="{Binding SendCommand}" Gesture="Enter" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                    <Button Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            MinWidth="80"
+                                            Command="{Binding SendCommand}"
+                                            Content="Send"
+                                            Theme="{StaticResource PrimaryButton}" />
+                                </Grid>
+
+                                <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding QuickCommands}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Margin="0,0,8,0"
+                                                    Command="{Binding $parent[ItemsControl].DataContext.QuickCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="{Binding}"
+                                                    Theme="{StaticResource ClassicButton}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <Border Theme="{StaticResource Card}" Padding="4">
+                                <ListBox Name="ConsoleList"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ItemContainerTheme="{StaticResource ConsoleLine}"
+                                         ItemsSource="{Binding Console}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock FontFamily="{StaticResource MonoFont}"
+                                                       FontSize="11.5"
+                                                       Foreground="{StaticResource BodyBrush}"
+                                                       Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </DockPanel>
+                    </TabItem>
+
+                    <!-- ======== Settings ======== -->
+                    <TabItem Header="Settings">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <Border Theme="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Theme="{StaticResource SectionTitle}" Text="server.properties" />
+                                        <TextBlock Margin="0,8,0,0"
+                                                   Theme="{StaticResource MutedText}"
+                                                   Text="Anything not shown here is left exactly as it is in the file. Settings marked as needing a restart only take effect the next time the server binds." />
+
+                                        <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Properties}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="0,0,0,14">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Theme="{StaticResource FieldLabel}" Text="{Binding LabelUpper}" />
+                                                            <TextBlock Margin="8,0,0,5"
+                                                                       FontFamily="{StaticResource MonoFont}"
+                                                                       FontSize="10"
+                                                                       Foreground="{StaticResource WarningBrush}"
+                                                                       Text="RESTART REQUIRED"
+                                                                       IsVisible="{Binding NeedsRestart}" />
+                                                        </StackPanel>
+                                                        <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding Value}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Theme="{StaticResource SectionTitle}" Text="Runtime" />
+
+                                        <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="JAVA RUNTIME" />
+                                        <ComboBox HorizontalAlignment="Stretch"
+                                                  ItemsSource="{Binding JavaRuntimes}"
+                                                  SelectedItem="{Binding SelectedJava}"
+                                                  Theme="{StaticResource ClassicComboBox}" />
+
+                                        <TextBlock Margin="0,16,0,0" Theme="{StaticResource FieldLabel}" Text="MAXIMUM MEMORY (MB)" />
+                                        <TextBox Theme="{StaticResource ClassicTextBox}" Text="{Binding MaxMemoryMb}" />
+
+                                        <CheckBox Margin="0,16,0,0"
+                                                  Content="Start this server when Vib-launcher opens"
+                                                  IsChecked="{Binding AutoStart}"
+                                                  Theme="{StaticResource ClassicCheckBox}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Margin="0,14,0,0" Theme="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Theme="{StaticResource SectionTitle}" Text="vib-MC version" />
+                                        <TextBlock Margin="0,8,0,0" Theme="{StaticResource MonoText}" Text="{Binding UpdateText}" />
+                                        <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+                                            <Button Command="{Binding CheckUpdateCommand}" Content="Check for updates" Theme="{StaticResource ClassicButton}" />
+                                            <Button Margin="8,0,0,0" Command="{Binding UpdateCommand}" Content="Update" Theme="{StaticResource PrimaryButton}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                                    <Button Command="{Binding SavePropertiesCommand}" Content="Save changes" Theme="{StaticResource PrimaryButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" Content="Open server folder" Theme="{StaticResource ClassicButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding OpenWorldCommand}" Content="Open world folder" Theme="{StaticResource ClassicButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding OpenLogsCommand}" Content="Open logs" Theme="{StaticResource ClassicButton}" />
+                                    <Button Margin="8,0,0,0" Command="{Binding DeleteCommand}" Content="Delete server" Theme="{StaticResource DangerButton}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ======== Backups ======== -->
+                    <TabItem Header="Backups">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding CreateBackupCommand}" Content="Create backup" Theme="{StaticResource PrimaryButton}" />
+                                <Button Margin="8,0,0,0" Command="{Binding OpenWorldCommand}" Content="Open world folder" Theme="{StaticResource ClassicButton}" />
+                            </StackPanel>
+
+                            <TextBlock Margin="0,16,0,0"
+                                       Theme="{StaticResource MutedText}"
+                                       Text="Backups are stored outside the server directory, so deleting the server does not delete them."
+                                       IsVisible="{Binding HasNoBackups, Converter={StaticResource InverseBool}}" />
+
+                            <TextBlock Margin="0,18,0,0"
+                                       Theme="{StaticResource MutedText}"
+                                       Text="No backups yet. A backup archives this server's worlds, player data, plugins and server.properties."
+                                       IsVisible="{Binding HasNoBackups}" />
+
+                            <ItemsControl Margin="0,14,0,0" ItemsSource="{Binding Backups}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,8"
+                                                Padding="14,11"
+                                                Background="{StaticResource CardBrush}"
+                                                BorderBrush="{StaticResource LineBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="{StaticResource ControlRadius}">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock FontFamily="{StaticResource MonoFont}"
+                                                               FontSize="13"
+                                                               Foreground="{StaticResource HeadingBrush}"
+                                                               Text="{Binding DisplayName}" />
+                                                    <TextBlock Margin="0,3,0,0"
+                                                               Theme="{StaticResource MonoText}"
+                                                               Text="{Binding SizeText}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <Button Command="{Binding $parent[ItemsControl].DataContext.RestoreBackupCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="Restore"
+                                                            Theme="{StaticResource ClassicButton}" />
+                                                    <Button Margin="8,0,0,0"
+                                                            Command="{Binding $parent[ItemsControl].DataContext.DeleteBackupCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="Delete"
+                                                            Theme="{StaticResource DangerButton}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Theme="{StaticResource MutedText}"
+                       Text="Select a server, or create one to get started."
+                       IsVisible="{Binding $parent[UserControl].DataContext.HasSelection,
+                                           Converter={StaticResource InverseBool}}" />
+        </Panel>
+    </Grid>
+</UserControl>

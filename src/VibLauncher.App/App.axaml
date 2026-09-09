@@ -1,0 +1,48 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mvvm="using:VibLauncher.App.Mvvm"
+             x:Class="VibLauncher.App.App"
+             RequestedThemeVariant="Dark">
+
+    <!--
+        The launcher is dark-only. Asking for the dark variant explicitly stops
+        the Fluent theme underneath from following the desktop's light/dark
+        setting and painting half the stock controls white on the void palette.
+    -->
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Order matters: the palette defines the brushes the other two
+                     dictionaries reference by StaticResource. -->
+                <ResourceInclude Source="avares://VibLauncher/Themes/Classic.Palette.axaml" />
+                <ResourceInclude Source="avares://VibLauncher/Themes/Classic.Text.axaml" />
+                <ResourceInclude Source="avares://VibLauncher/Themes/Classic.Controls.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <mvvm:InverseBool x:Key="InverseBool" />
+            <mvvm:BoolToOpacity x:Key="BoolToOpacity" />
+            <mvvm:StateToBrush x:Key="StateToBrush" />
+            <mvvm:BoolToToggleText x:Key="BoolToToggleText" />
+            <mvvm:NotNull x:Key="NotNull" />
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <!--
+            The base the Classic theme sits on. Only the controls that keep a
+            stock template use it directly - the text box, the combo box, the
+            scroll bar and the tree - and each of those is restyled in
+            Classic.Controls.axaml rather than left as Fluent draws it.
+        -->
+        <FluentTheme />
+
+        <!--
+            Applied last, so the selectors here win over Fluent's for the same
+            control. Styles, unlike resources, are matched in declaration order
+            with the last match taking effect.
+        -->
+        <StyleInclude Source="avares://VibLauncher/Themes/Classic.Styles.axaml" />
+    </Application.Styles>
+
+</Application>

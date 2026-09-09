@@ -1,3 +1,5 @@
+// System.Windows.Input is not WPF here: ICommand lives in System.ObjectModel and
+// is part of the base class library, and Avalonia binds to that same interface.
 using System.Windows.Input;
 
 namespace VibLauncher.App.Mvvm;

@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VibLauncher.App.Views.Dialogs.MessageDialog"
+        Title="Vib-launcher"
+        Width="470"
+        MinHeight="180"
+        Background="{StaticResource SurfaceBrush}"
+        FontFamily="{StaticResource SansFont}"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SizeToContent="Height"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Padding="24" Background="{StaticResource SurfaceBrush}">
+        <StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <!-- A 3px bar in the accent colour instead of a stock icon.
+                     Ember for information, red for a failure or a deletion. -->
+                <Rectangle x:Name="Accent"
+                           Width="3"
+                           Margin="0,2,14,2"
+                           Fill="{StaticResource EmberBrush}"
+                           RadiusX="1.5"
+                           RadiusY="1.5" />
+                <StackPanel Width="400">
+                    <TextBlock x:Name="Headline"
+                               Theme="{StaticResource SectionTitle}"
+                               Text="Message"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="Body"
+                               Margin="0,10,0,0"
+                               Theme="{StaticResource BodyText}"
+                               Text="" />
+                    <TextBlock x:Name="Remedy"
+                               Margin="0,12,0,0"
+                               Theme="{StaticResource MutedText}"
+                               Text=""
+                               IsVisible="False" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Margin="0,24,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <Button x:Name="CancelButton"
+                        Margin="0,0,10,0"
+                        MinWidth="96"
+                        Click="OnCancel"
+                        Content="Cancel"
+                        IsCancel="True"
+                        Theme="{StaticResource ClassicButton}"
+                        IsVisible="False" />
+                <Button x:Name="ConfirmButton"
+                        MinWidth="96"
+                        Click="OnConfirm"
+                        Content="OK"
+                        IsDefault="True"
+                        Theme="{StaticResource PrimaryButton}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

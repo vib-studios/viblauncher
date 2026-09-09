@@ -1,0 +1,109 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VibLauncher.App.ViewModels"
+        x:Class="VibLauncher.App.Views.Dialogs.ExportInstanceDialog"
+        Title="Vib-launcher"
+        Width="620"
+        Height="600"
+        MinWidth="520"
+        MinHeight="440"
+        Background="{StaticResource SurfaceBrush}"
+        FontFamily="{StaticResource SansFont}"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.DataTemplates>
+        <!-- One row: the tick, the name, and what it costs the archive.
+             Avalonia's TreeDataTemplate is the counterpart of WPF's
+             HierarchicalDataTemplate: ItemsSource is what makes the row a
+             branch rather than a leaf. -->
+        <TreeDataTemplate DataType="vm:ExportEntryViewModel" ItemsSource="{Binding Children}">
+            <Grid Margin="0,0,8,0" ColumnDefinitions="Auto,*,Auto">
+
+                <!-- Two-state on purpose: the half-tick is something the picker
+                     works out, never something a click asks for. -->
+                <CheckBox VerticalAlignment="Center"
+                          IsChecked="{Binding IsIncluded, Mode=TwoWay}"
+                          IsThreeState="False"
+                          Theme="{StaticResource ClassicCheckBox}" />
+
+                <TextBlock Grid.Column="1"
+                           Margin="0,0,16,0"
+                           VerticalAlignment="Center"
+                           Theme="{StaticResource BodyText}"
+                           Text="{Binding Name}"
+                           TextTrimming="CharacterEllipsis" />
+
+                <TextBlock Grid.Column="2"
+                           VerticalAlignment="Center"
+                           Theme="{StaticResource MutedText}"
+                           Text="{Binding Detail}" />
+            </Grid>
+        </TreeDataTemplate>
+    </Window.DataTemplates>
+
+    <Grid Margin="24" RowDefinitions="Auto,Auto,*,Auto">
+
+        <StackPanel Grid.Row="0">
+            <TextBlock x:Name="Headline" Theme="{StaticResource SectionTitle}" Text="Export instance" />
+            <TextBlock Margin="0,8,0,0"
+                       Theme="{StaticResource MutedText}"
+                       Text="Untick anything that should stay behind. Minecraft's own assets, libraries and versions are never included: they are downloaded again on import." />
+        </StackPanel>
+
+        <!-- Bulk actions sit above the tree, where they read as acting on it. -->
+        <StackPanel Grid.Row="1"
+                    Margin="0,18,0,10"
+                    Orientation="Horizontal">
+            <Button MinWidth="96"
+                    Click="OnSelectAll"
+                    Content="Select all"
+                    Theme="{StaticResource ClassicButton}" />
+            <Button Margin="10,0,0,0"
+                    MinWidth="96"
+                    Click="OnSelectNone"
+                    Content="Select none"
+                    Theme="{StaticResource ClassicButton}" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Padding="10,8" Theme="{StaticResource Card}">
+            <Panel>
+                <TreeView x:Name="Contents"
+                          ItemsSource="{Binding Entries}"
+                          Theme="{StaticResource ClassicTreeView}" />
+
+                <TextBlock x:Name="EmptyNotice"
+                           Margin="8,10,8,0"
+                           VerticalAlignment="Top"
+                           Theme="{StaticResource MutedText}"
+                           Text="There is nothing here yet. An export would carry only the instance's settings."
+                           TextWrapping="Wrap"
+                           IsVisible="False" />
+            </Panel>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,18,0,0" ColumnDefinitions="*,Auto">
+
+            <TextBlock Margin="0,0,16,0"
+                       VerticalAlignment="Center"
+                       Theme="{StaticResource MutedText}"
+                       Text="{Binding Summary}"
+                       TextTrimming="CharacterEllipsis" />
+
+            <StackPanel Grid.Column="1" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button Margin="0,0,10,0"
+                        MinWidth="96"
+                        Click="OnCancel"
+                        Content="Cancel"
+                        IsCancel="True"
+                        Theme="{StaticResource ClassicButton}" />
+                <Button MinWidth="120"
+                        Click="OnConfirm"
+                        Content="Choose file"
+                        IsDefault="True"
+                        IsEnabled="{Binding CanExport}"
+                        Theme="{StaticResource PrimaryButton}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

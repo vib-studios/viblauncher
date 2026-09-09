@@ -2,8 +2,8 @@
 
   <!--
     Infrastructure is where Core's interfaces meet the outside world: Mojang,
-    Modrinth, the loader metadata services, GitHub, the network stack and
-    Windows' credential encryption. Nothing here is referenced by Core, so the
+    Modrinth, the loader metadata services, GitHub, the network stack and the
+    platform's credential storage. Nothing here is referenced by Core, so the
     domain rules stay testable without any of it.
   -->
   <PropertyGroup>
@@ -16,7 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- DPAPI, for encrypting account tokens against the current Windows user. -->
+    <!--
+      DPAPI, for encrypting account tokens against the current Windows user. Only
+      DpapiTokenStore touches it, and only when running on Windows; the Linux and
+      macOS builds use the desktop keyring or a machine-bound file instead.
+    -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
   </ItemGroup>
 

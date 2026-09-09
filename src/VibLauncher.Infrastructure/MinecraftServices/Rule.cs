@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using VibLauncher.Core.Common;
 
 namespace VibLauncher.Infrastructure.MinecraftServices;
 
@@ -64,8 +64,8 @@ public sealed record Rule(
 /// </remarks>
 public static class RuleEvaluator
 {
-    /// <summary>Mojang's name for Windows in the <c>os.name</c> field.</summary>
-    public const string CurrentOsName = "windows";
+    /// <summary>Mojang's name for this machine's OS in the <c>os.name</c> field.</summary>
+    public static string CurrentOsName => HostPlatform.MojangOsName;
 
     /// <summary>The features the launcher enables. Everything unlisted counts as off.</summary>
     private static readonly Dictionary<string, bool> ActiveFeatures = new(StringComparer.Ordinal)
@@ -131,26 +131,29 @@ public static class RuleEvaluator
         return true;
     }
 
-    private static string CurrentArch => Environment.Is64BitOperatingSystem ? "x64" : "x86";
+    private static string CurrentArch => HostPlatform.MojangOsArch;
 
     /// <summary>The Maven classifier naming the natives this machine can load.</summary>
-    public static string CurrentNativesClassifier => RuntimeInformation.OSArchitecture switch
-    {
-        Architecture.Arm64 => "natives-windows-arm64",
-        Architecture.X86 => "natives-windows-x86",
-        _ => "natives-windows",
-    };
+    public static string CurrentNativesClassifier => HostPlatform.NativesClassifier;
+
+    /// <summary>The classifier prefix that all of this OS's natives share.</summary>
+    /// <remarks>
+    /// <c>natives-linux</c> for x64 Linux and <c>natives-linux-arm64</c> for
+    /// aarch64 both start here, which is what makes one a sibling of the other
+    /// rather than an unrelated platform's jar.
+    /// </remarks>
+    private static string CurrentNativesPrefix => HostPlatform.NativesClassifierPrefix;
 
     /// <summary>
-    /// True when a library's coordinate names a Windows architecture that is not
-    /// this one.
+    /// True when a library's coordinate names an architecture of this operating
+    /// system that is not this machine's.
     /// </summary>
     /// <remarks>
-    /// From 1.19 the natives are ordinary libraries, and Mojang gives all three
-    /// Windows entries the same rule: os windows, no arch. The architecture
-    /// lives in the classifier alone. Rules therefore admit all three, and
+    /// From 1.19 the natives are ordinary libraries, and Mojang gives every
+    /// entry for one OS the same rule: os linux, no arch. The architecture
+    /// lives in the classifier alone. Rules therefore admit all of them, and
     /// unpacking them into one flat folder leaves whichever was written last,
-    /// which is how a 64-bit JVM ends up holding a 32-bit lwjgl.dll. The
+    /// which is how an x86-64 JVM ends up holding an aarch64 liblwjgl.so. The
     /// classifier is the only thing that tells them apart, so it is what decides.
     /// </remarks>
     public static bool IsForeignNativesClassifier(string libraryName)
@@ -163,13 +166,23 @@ public static class RuleEvaluator
             return false;
         }
 
-        // Only the Windows classifiers are ambiguous. The others carry an os rule
-        // that has already excluded them.
+        // Only this OS's own classifiers are ambiguous. Another platform's carry
+        // an os rule that has already excluded them.
         var classifier = libraryName[(marker + 1)..];
-        return classifier.StartsWith("natives-windows", StringComparison.Ordinal)
+        return classifier.StartsWith(CurrentNativesPrefix, StringComparison.Ordinal)
                && !classifier.Equals(CurrentNativesClassifier, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Matches a rule's version pattern against this machine's OS version.
+    /// </summary>
+    /// <remarks>
+    /// Only Mojang's old macOS rules and a handful of Windows 10 entries use
+    /// this, and both match against a dotted version number, which is what
+    /// <see cref="Environment.OSVersion"/> reports on Linux too (the kernel
+    /// release). A Linux rule with a version pattern does not exist in
+    /// practice, so this is a fallback rather than a load-bearing path.
+    /// </remarks>
     private static bool MatchesOsVersion(string pattern)
     {
         try

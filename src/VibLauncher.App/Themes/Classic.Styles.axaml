@@ -1,0 +1,100 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        The styles that apply to every instance of a control rather than to the
+        ones that ask for a theme by name.
+
+        WPF expressed these as a keyless Style in the same dictionary as the
+        keyed ones. Avalonia keeps the two apart: a ControlTheme is attached by
+        key, and a Style with a selector applies wherever it matches. These are
+        the second kind - the chrome nobody writes markup for, which would
+        otherwise be drawn by Fluent in its own light-desktop colours.
+    -->
+
+    <!-- ============================== Scroll bar =============================
+         Thin, dark, and out of the way. The launcher scrolls long lists of mods
+         and long console logs, and Fluent's default bar is both wider than this
+         layout wants and painted for a light window.
+    -->
+
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ScrollBar[Orientation=Vertical]">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+    </Style>
+
+    <Style Selector="ScrollBar[Orientation=Horizontal]">
+        <Setter Property="Height" Value="8" />
+        <Setter Property="MinHeight" Value="8" />
+    </Style>
+
+    <!-- Fluent's thumb is a Border inside the Thumb's own template. Colouring
+         the Thumb's Background is what actually shows, because that Border
+         template-binds to it. -->
+    <Style Selector="ScrollBar /template/ Thumb">
+        <Setter Property="Background" Value="{StaticResource Zinc700Brush}" />
+        <Setter Property="Opacity" Value="0.8" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb:pointerover">
+        <Setter Property="Background" Value="{StaticResource DisabledBrush}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- The line-up and line-down arrows at the ends of Fluent's bar have no
+         place on a bar this thin. -->
+    <Style Selector="ScrollBar /template/ RepeatButton">
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+
+    <!-- ============================== Tool tip ============================== -->
+
+    <Style Selector="ToolTip">
+        <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource ControlRadius}" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="MaxWidth" Value="360" />
+    </Style>
+
+    <!-- ============================== Windows ===============================
+         Every window in the launcher is on the void surface with the sans face.
+         Setting it here rather than on each one is what keeps a new dialog from
+         opening in Fluent's default white.
+    -->
+
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="TransparencyLevelHint" Value="None" />
+    </Style>
+
+    <!-- Text with no theme of its own still has to be legible on the void
+         surface; Fluent would otherwise leave it near-black. -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+    </Style>
+
+    <!--
+        The controls the launcher only ever uses in one styling.
+
+        A control named here needs no Theme= in the views, which is the same
+        reasoning as the keyless WPF styles this replaces: there is exactly one
+        way the launcher draws a scroll viewer or a separator, so saying it once
+        beats repeating it at every use.
+    -->
+
+    <Style Selector="ScrollViewer">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+</Styles>

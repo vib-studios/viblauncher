@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Vib-launcher
+GenericName=Minecraft Launcher
+Comment=Manage Minecraft instances, mods and vib-MC servers
+Exec=viblauncher %U
+Icon=viblauncher
+Terminal=false
+StartupNotify=true
+StartupWMClass=VibLauncher
+Categories=Game;ActionGame;Java;
+Keywords=minecraft;launcher;mods;modpack;server;fabric;quilt;

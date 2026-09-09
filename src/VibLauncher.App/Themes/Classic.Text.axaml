@@ -1,0 +1,82 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Type scale, lifted from the Classic pages.
+
+        The site pairs a tight, heavily negative-tracked sans for headings with a
+        wide, uppercase mono for labels. That contrast is most of what makes the
+        identity recognisable, so it is reproduced here rather than flattened
+        into one family.
+
+        These are ControlThemes rather than Styles because Avalonia applies a
+        named style through Theme="{StaticResource ...}", which is the direct
+        equivalent of WPF's Style="{StaticResource ...}". A plain Style with a
+        key cannot be attached to one element the same way.
+    -->
+
+    <ControlTheme x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource HeadingBrush}" />
+        <Setter Property="LineHeight" Value="32" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="SectionTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource HeadingBrush}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="BodyText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource SansFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource BodyBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="20" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="MutedText" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </ControlTheme>
+
+    <!--
+        The uppercase mono label: the site's dt element, at 11px in zinc-500.
+        It carries a lot of the Classic feel, so it labels every field and every
+        stat in the launcher.
+    -->
+    <ControlTheme x:Key="FieldLabel" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="Foreground" Value="{StaticResource FaintBrush}" />
+        <Setter Property="Margin" Value="0,0,0,5" />
+        <Setter Property="LineHeight" Value="14" />
+    </ControlTheme>
+
+    <!-- The mono value that sits under a FieldLabel: the actual number or name. -->
+    <ControlTheme x:Key="StatValue" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource HeadingBrush}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="MonoText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </ControlTheme>
+
+    <!-- The wordmark. Press Start 2P is on almost no desktop, so the fallback is
+         a heavy mono at a small size, which keeps the blocky feel without
+         pretending to be a pixel face. -->
+    <ControlTheme x:Key="Wordmark" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource WordmarkFont}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource HeadingBrush}" />
+    </ControlTheme>
+
+</ResourceDictionary>

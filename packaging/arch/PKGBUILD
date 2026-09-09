@@ -1,0 +1,104 @@
+# Maintainer: Vib Studios
+
+pkgname=viblauncher
+pkgver=0.1.1
+pkgrel=1
+pkgdesc='Minecraft launcher for instances, mods and vib-MC servers'
+arch=('x86_64' 'aarch64')
+url='https://github.com/vib-studios/viblauncher'
+license=('GPL-3.0-or-later')
+
+# The launcher shells out to Java to run Minecraft, so a JRE is a hard runtime
+# dependency rather than a suggestion. 17 is the floor for anything from
+# Minecraft 1.18 on; older versions need an older runtime, which the launcher
+# finds by itself under /usr/lib/jvm if one is installed alongside.
+depends=(
+  'dotnet-runtime-10.0'
+  'java-runtime>=17'
+  # The X11 backend's rendering and text stack.
+  'fontconfig'
+  'libx11'
+  'libice'
+  'libsm'
+)
+
+optdepends=(
+  'libsecret: store Microsoft account tokens in the desktop keyring'
+  'gnome-keyring: a Secret Service provider for libsecret'
+  'kwallet: an alternative Secret Service provider'
+  'xdg-utils: open folders and links in the desktop file manager and browser'
+  'xdg-desktop-portal: native file pickers under Wayland and Flatpak'
+)
+
+makedepends=('dotnet-sdk-10.0' 'git')
+
+source=("git+$url.git#tag=v$pkgver")
+sha256sums=('SKIP')
+
+_project=VibLauncher
+
+build() {
+  cd "$srcdir/$pkgname"
+
+  # Telemetry off and no first-run banner: a package build must not phone home
+  # or write into the builder's home directory.
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1
+  export DOTNET_NOLOGO=1
+  export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+
+  local rid
+  case "$CARCH" in
+    x86_64)  rid=linux-x64 ;;
+    aarch64) rid=linux-arm64 ;;
+    *) echo "unsupported architecture: $CARCH" >&2; return 1 ;;
+  esac
+
+  # Framework-dependent on purpose: dotnet-runtime-10.0 is a dependency, so the
+  # package does not ship a second copy of the runtime for every application
+  # that uses it. --no-self-contained is what keeps that true while still
+  # producing a native launcher binary for the RID.
+  dotnet publish src/$_project.App/$_project.App.csproj \
+    --configuration Release \
+    --runtime "$rid" \
+    --no-self-contained \
+    --output "$srcdir/publish"
+}
+
+check() {
+  cd "$srcdir/$pkgname"
+
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1
+  export DOTNET_NOLOGO=1
+
+  # The suite runs without a network and without a display: the download tests
+  # stand up a loopback server, and nothing here opens a window.
+  dotnet test tests/$_project.Tests/$_project.Tests.csproj --configuration Release
+}
+
+package() {
+  # The application and everything it loads go in one directory, with a wrapper
+  # on PATH. A .NET application's files are not individually useful and do not
+  # belong loose in /usr/lib.
+  install -dm755 "$pkgdir/usr/lib/$pkgname"
+  cp -r "$srcdir/publish/." "$pkgdir/usr/lib/$pkgname/"
+
+  # Everything readable, only the entry point executable.
+  chmod -R u=rwX,go=rX "$pkgdir/usr/lib/$pkgname"
+  chmod 755 "$pkgdir/usr/lib/$pkgname/$_project"
+
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s "/usr/lib/$pkgname/$_project" "$pkgdir/usr/bin/$pkgname"
+
+  cd "$srcdir/$pkgname"
+
+  install -Dm644 packaging/linux/$pkgname.desktop \
+    "$pkgdir/usr/share/applications/$pkgname.desktop"
+
+  for size in 16 24 32 48 64 128 256 512; do
+    install -Dm644 "packaging/linux/icons/$pkgname-$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/$pkgname.png"
+  done
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

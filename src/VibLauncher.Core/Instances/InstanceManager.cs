@@ -943,7 +943,10 @@ public sealed class InstanceManager : IInstanceManager
             return roots;
         }
 
-        var folders = new Dictionary<string, InstanceContentNode>(StringComparer.OrdinalIgnoreCase);
+        // Folder names are compared the way the file system does, so that
+        // "Mods" and "mods" stay two nodes on Linux and collapse into one on
+        // Windows, matching what the user sees in their file manager.
+        var folders = new Dictionary<string, InstanceContentNode>(HostPlatform.PathComparer);
 
         foreach (var file in Directory.EnumerateFiles(gameDirectory, "*", SearchOption.AllDirectories))
         {
