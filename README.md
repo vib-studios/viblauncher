@@ -17,7 +17,7 @@ page anywhere in it.
 
 | | |
 |---|---|
-| OS | Linux (x86-64 or aarch64). Windows 10 20H1 or newer, 64-bit, builds and is expected to work but is not tested - see [Platform support](#platform-support). |
+| OS | Linux (x86-64 or aarch64). On Windows, Avalonia's own floor applies: Windows 10 22H2 (build 19045, x64) or Windows 11. The launcher builds for it but is not tested there - see [Platform support](#platform-support). |
 | To run | [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). On Arch: `dotnet-runtime-10.0` |
 | To build | .NET 10 SDK. On Arch: `dotnet-sdk-10.0` |
 | To play | A Java runtime. Which one depends on the Minecraft version: Java 8 for 1.16 and older, 16 for 1.17, 17 for 1.18 through 1.20.4, and 21 for 1.20.5 and newer. This table is a guide; the launcher uses the `javaVersion` block Mojang publishes with a version when it is there, falls back to these bounds when it is not, detects what is installed, and says which release is needed. |
@@ -46,6 +46,13 @@ What is missing is somebody actually starting it on Windows. So:
 
 If you use Vib-launcher on Windows and would like to keep it healthy, testing releases is the single
 most useful thing you can contribute.
+
+The Windows version floor in [Requirements](#requirements) is Avalonia's, not one measured here.
+Avalonia lists Windows 11 24H2 as fully supported, and Windows 11 22H2 and Windows 10 22H2 (build
+19045, x64) as best effort; earlier builds are commercial support only. .NET 10 itself reaches
+further back, to Windows 10 1607 on Enterprise, so the toolkit is the binding constraint rather than
+the runtime. Since nobody here runs Windows, treat all of it as what the dependencies claim rather
+than as something the launcher has been seen to do.
 
 Nothing from Minecraft is bundled. Client jars, libraries and assets are fetched from Mojang's own
 distribution endpoints and verified against the hashes Mojang publishes with them.
