@@ -1,0 +1,25 @@
+pkgbase = viblauncher
+	pkgdesc = Minecraft launcher for instances, mods and vib-MC servers
+	pkgver = 0.2.0
+	pkgrel = 1
+	url = https://github.com/vib-studios/viblauncher
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-or-later
+	makedepends = dotnet-sdk-10.0
+	makedepends = git
+	depends = dotnet-runtime-10.0
+	depends = java-runtime>=17
+	depends = fontconfig
+	depends = libx11
+	depends = libice
+	depends = libsm
+	optdepends = libsecret: store Microsoft account tokens in the desktop keyring
+	optdepends = gnome-keyring: a Secret Service provider for libsecret
+	optdepends = kwallet: an alternative Secret Service provider
+	optdepends = xdg-utils: open folders and links in the desktop file manager and browser
+	optdepends = xdg-desktop-portal: native file pickers under Wayland and Flatpak
+	source = viblauncher::git+https://github.com/vib-studios/viblauncher.git#tag=v0.2.0
+	sha256sums = SKIP
+
+pkgname = viblauncher
