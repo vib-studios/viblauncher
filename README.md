@@ -102,6 +102,12 @@ enable/disable, download success, checksum failure, retry and cancellation, `ser
 round-tripping, port probing, version metadata parsing and merging, argument building, path safety
 and credential redaction. They need no network: the download tests stand up a loopback HTTP server.
 
+GitHub Actions runs the same suite on Linux and Windows for every push and pull request, which is
+the only thing that compiles and tests the Windows half - see [Platform support](#platform-support).
+Tagging `v<version>` builds the self-contained binaries for `linux-x64`, `linux-arm64` and `win-x64`
+and attaches them to a draft release, after checking the tag against `<Version>` in
+`Directory.Build.props`.
+
 ---
 
 ## Where things are kept

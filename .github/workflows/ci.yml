@@ -1,0 +1,87 @@
+# Build and test every push and pull request.
+#
+# The suite needs no network and no display - the download tests stand up a
+# loopback HTTP server and nothing here opens a window - so a plain hosted
+# runner is enough on both platforms.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a branch makes the run in flight for that branch pointless.
+# main is left alone so the history of its runs stays complete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    # Linux is the supported platform, but Windows is still part of the
+    # codebase and nobody here runs it, so CI is the only thing that compiles
+    # and tests that half. fail-fast off: when one platform breaks, the state of
+    # the other is exactly what the report needs to say.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+          - name: windows
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # global.json asks for 10.0.0 with rollForward latestFeature, so any
+      # 10.0 SDK satisfies it.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # No lock file in the repository, so the key is the project files that
+      # name the versions instead.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore VibLauncher.slnx
+
+      # Warnings are errors in Directory.Build.props, so this step is also the
+      # analyzer gate.
+      - name: Build
+        run: dotnet build VibLauncher.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test VibLauncher.slnx
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=${{ matrix.name }}.trx"
+          --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.name }}
+          path: artifacts/test-results/*.trx
+          if-no-files-found: warn
