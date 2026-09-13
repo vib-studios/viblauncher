@@ -1,0 +1,169 @@
+# Build the downloadable binaries for a tagged release.
+#
+# What this produces is the self-contained build from the README: one
+# executable with the runtime inside it, for a machine with no .NET installed.
+# The Arch package is not built here - it is framework-dependent and built from
+# the tag by makepkg, which needs the tag to exist first.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build, e.g. v0.2.0'
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+jobs:
+  # The tag is what the PKGBUILD and every download link point at, so a release
+  # whose assets disagree with <Version> is worth failing before it is built.
+  verify:
+    name: Verify version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # The tag reaches the script through the environment rather than through
+      # ${{ }} interpolation, so a tag name is never pasted into the shell.
+      - id: version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          tag="$TAG"
+          version="${tag#v}"
+          declared=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          if [ "$version" != "$declared" ]; then
+            echo "tag $tag does not match <Version>$declared</Version> in Directory.Build.props" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Test
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test VibLauncher.slnx --configuration Release
+
+  publish:
+    name: ${{ matrix.rid }}
+    needs: [verify, test]
+    runs-on: ${{ matrix.os }}
+
+    # The Linux RIDs cross-publish from one runner; win-x64 is built on Windows
+    # so the executable's icon and version resources are written by the same
+    # toolchain that will run it.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-latest
+          - rid: win-x64
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      # DebugType=none keeps the .pdb out of the archive and stops the assembly
+      # embedding the absolute path it was built at, the same as the PKGBUILD.
+      - name: Publish
+        run: >
+          dotnet publish src/VibLauncher.App/VibLauncher.App.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -p:DebugSymbols=false
+          --output publish
+
+      - name: Archive (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cp LICENSE README.md publish/
+          mkdir -p artifacts
+          tar -czf "artifacts/viblauncher-${{ needs.verify.outputs.version }}-${{ matrix.rid }}.tar.gz" \
+            -C publish .
+
+      - name: Archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item -Path LICENSE, README.md -Destination publish/
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Compress-Archive -Path publish/* `
+            -DestinationPath "artifacts/viblauncher-${{ needs.verify.outputs.version }}-${{ matrix.rid }}.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: viblauncher-${{ matrix.rid }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [verify, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum viblauncher-* > SHA256SUMS
+
+      # A draft, so the release notes are written and the assets checked before
+      # anything is announced.
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: >
+          gh release create "${{ needs.verify.outputs.tag }}"
+          --draft
+          --title "Vib-launcher ${{ needs.verify.outputs.version }}"
+          --generate-notes
+          artifacts/*
