@@ -109,14 +109,17 @@ jobs:
         run: pacman -Syu --noconfirm
 
       - name: Configure makepkg for CI
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
         run: |
           useradd -m builder
           chown -R builder:builder .
           # The package must be built for the architecture the user will run it
           # on, and the runner is x86_64, so aarch64 is cross-compiled. makepkg
-          # refuses to install an aarch64 package on an x86_64 host without
-          # --arch; the resulting .pkg.tar.zst is still correct for aarch64.
-          runuser -u builder -- makepkg -f --arch "${{ matrix.arch }}"
+          # takes the target through the ARCH environment variable, not a flag;
+          # without it the aarch64 job would silently produce an x86_64 package
+          # that installs and then cannot execute.
+          runuser -u builder -- env ARCH="$TARGET_ARCH" makepkg -f
 
       # Named so the artifact is self-describing: the pages job below globs
       # these rather than whatever happens to be in the working tree.
