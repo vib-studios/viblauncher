@@ -81,15 +81,30 @@ Use `-r win-x64` for the same thing on Windows.
 
 ### Installing on Arch
 
+From the pacman repository, once:
+
+```sh
+printf '[viblauncher]\nServer = https://vib-studios.github.io/viblauncher/repo/$arch\n' \
+  | sudo tee /etc/pacman.d/viblauncher.conf
+sudo pacman -Sy
+sudo pacman -S viblauncher
+```
+
+Or from source, which builds the same package:
+
 ```
 cd packaging/arch
 makepkg -si
 ```
 
-That builds from the tagged release, runs the test suite, and installs to `/usr/lib/viblauncher`
-with a `viblauncher` wrapper on `PATH`, a desktop entry and hicolor icons. `libsecret` and
-`xdg-utils` are optional dependencies rather than hard ones: the launcher works without either, with
-a weaker token store and no "open folder" button respectively.
+Either way it builds from the tagged release, runs the test suite, and installs to
+`/usr/lib/viblauncher` with a `viblauncher` wrapper on `PATH`, a desktop entry and hicolor icons.
+`libsecret` and `xdg-utils` are optional dependencies rather than hard ones: the launcher works
+without either, with a weaker token store and no "open folder" button respectively.
+
+The repository packages are framework-dependent and depend on `dotnet-runtime-10.0`. The tarballs
+on the releases page are self-contained and need no runtime installed; they are the right choice
+off Arch.
 
 ## Tests
 

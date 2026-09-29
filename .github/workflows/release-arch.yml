@@ -1,0 +1,211 @@
+# Build the Arch package and publish it to a pacman repository on GitHub Pages.
+#
+# What this produces is the framework-dependent package from packaging/arch:
+# /usr/lib/viblauncher plus a wrapper on PATH, depending on
+# dotnet-runtime-10.0 rather than shipping a second copy of the runtime. That is
+# deliberate, and it is why the package is not produced by the Release workflow
+# that builds the self-contained tarballs - the two ship different things on
+# purpose, for users who are not on Arch.
+#
+# A pacman repo is a directory of .pkg.tar.zst files plus a database that
+# repo-add builds from them. pacman fetches all three (package, .db, .files)
+# over plain HTTPS, so GitHub Pages is enough and no AUR account is involved.
+# Everything is served from a subpath of this repo's Pages site, so it is a
+# sibling of the tarballs rather than a separate place to look.
+
+# Requires Pages to be enabled on this repository (Settings -> Pages, deploy
+# from a branch). Enabling it through the API can auto-assign the apex custom
+# domain to this repo, which belongs to vib-studios.github.io, so it is left as
+# a manual setting on purpose. Do not set a custom domain here: this repo's Pages
+# site is a subpath of vib-studios.github.io, not a site of its own.
+name: Arch package
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build, e.g. v0.2.0'
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# The Release workflow publishes the same tags at the same time. They write to
+# different paths and neither is cancelled by the other, but they do not need to
+# run twice for a manual dispatch, so this group is per-ref rather than shared.
+concurrency:
+  group: arch-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+jobs:
+  # The PKGBUILD pins pkgver and the source is a tag, so a stale pkgver would
+  # either build the previous release or fail to find the tag. Both are worth
+  # catching before a package is published under a version that says otherwise.
+  verify:
+    name: Verify version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # Same reasoning as the Release workflow: the tag reaches the script
+      # through the environment, so a tag name is never pasted into the shell.
+      - id: version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          tag="$TAG"
+          version="${tag#v}"
+          declared=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          pkgver=$(sed -n 's:^pkgver=//p' packaging/arch/PKGBUILD)
+          if [ "$version" != "$declared" ]; then
+            echo "tag $tag does not match <Version>$declared</Version> in Directory.Build.props" >&2
+            exit 1
+          fi
+          if [ "$version" != "$pkgver" ]; then
+            echo "tag $tag does not match pkgver=$pkgver in packaging/arch/PKGBUILD" >&2
+            echo "bump pkgver (and pkgrel) before tagging, or the package lies about its version" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: verify
+    runs-on: ubuntu-latest
+    # makepkg refuses to run as root, so the whole job runs as a normal user in
+    # an Arch container rather than being run as a normal user on an Ubuntu
+    # runner. The container is the only place the Arch toolchain is correct.
+    container:
+      image: archlinux:base-devel
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+          - arch: aarch64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+
+      - name: Update system
+        run: pacman -Syu --noconfirm
+
+      - name: Configure makepkg for CI
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+          # The package must be built for the architecture the user will run it
+          # on, and the runner is x86_64, so aarch64 is cross-compiled. makepkg
+          # refuses to install an aarch64 package on an x86_64 host without
+          # --arch; the resulting .pkg.tar.zst is still correct for aarch64.
+          runuser -u builder -- makepkg -f --arch "${{ matrix.arch }}"
+
+      # Named so the artifact is self-describing: the pages job below globs
+      # these rather than whatever happens to be in the working tree.
+      - name: Collect package
+        id: collect
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          for pkg in ./*.pkg.tar.zst; do
+            [ -e "$pkg" ] || continue
+            cp "$pkg" out/
+            echo "package=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
+          done
+          ls -l out/
+
+      # Attached to the release as well as the pacman repo, so someone who
+      # arrived from a release page and is on Arch does not have to go looking.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: viblauncher-pkg-${{ matrix.arch }}
+          path: out/*.pkg.tar.zst
+          if-no-files-found: error
+
+  pages:
+    name: Publish pacman repo
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: viblauncher-pkg-*
+          path: packages
+          merge-multiple: true
+
+      - name: Create pacman repo database
+        run: |
+          set -euo pipefail
+          mkdir -p repo
+          ls -l packages
+          # repo-add reads the package metadata to build the database, so the
+          # architecture suffix in the filename is what selects what lands in
+          # the db; both are added because both are real.
+          repo-add repo/viblauncher.db.tar.gz packages/*.pkg.tar.zst
+          rm -f repo/viblauncher.db repo/viblauncher.files
+          cp repo/viblauncher.db.tar.gz repo/viblauncher.db
+          cp repo/viblauncher.files.tar.gz repo/viblauncher.files
+          cp packages/*.pkg.tar.zst repo/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  release:
+    name: Attach to release
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: viblauncher-pkg-*
+          path: packages
+          merge-multiple: true
+
+      # The release is created as a draft by the Release workflow, which runs on
+      # the same tag. If this runs first there is nothing to attach to yet, so
+      # wait rather than publishing a second release for the same tag.
+      - name: Attach packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.verify.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release upload "$TAG" packages/*.pkg.tar.zst --clobber
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "release $TAG did not appear within 5 minutes; skipping" >&2
