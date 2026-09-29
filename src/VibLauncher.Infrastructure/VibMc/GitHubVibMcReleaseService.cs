@@ -10,7 +10,7 @@ namespace VibLauncher.Infrastructure.VibMc;
 /// <remarks>
 /// Reads the vib-MC project's GitHub releases. This is the project's own
 /// publishing channel, and it gives the launcher a jar, a size and release notes
-/// in one documented call. The website at vib-studios.github.io reads the same
+/// in one documented call. The website at vibstudios.space reads the same
 /// API from the browser; the launcher goes to the source rather than embedding
 /// the page.
 /// </remarks>

@@ -33,7 +33,7 @@ public sealed record VibMcRelease(
 /// </summary>
 /// <remarks>
 /// Backed by the project's GitHub releases API rather than by scraping
-/// vib-studios.github.io. Nothing about the website is embedded in the
+/// vibstudios.space. Nothing about the website is embedded in the
 /// launcher: the site is where a person reads about the project, the API is
 /// where the launcher gets a jar.
 /// </remarks>

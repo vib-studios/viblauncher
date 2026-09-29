@@ -298,7 +298,7 @@ UI hides it instead of failing a search.
 vib-MC servers are a separate concept from instances and never share a directory. An instance is a
 client the launcher starts; a server is a Java process that listens on a port and owns its own worlds.
 
-Server jars come from the vib-MC project's GitHub releases. The website at vib-studios.github.io is
+Server jars come from the vib-MC project's GitHub releases. The website at vibstudios.space is
 where a person reads about the project; the launcher goes to the API for a jar and builds its own native
 UI.
 
@@ -347,7 +347,7 @@ Stated plainly rather than hidden behind a disabled button:
 
 ## The Classic theme
 
-The palette, type and shapes come from `vib-studios.github.io/classic`, whose tokens are authored in
+The palette, type and shapes come from the website's `classic` theme, whose tokens are authored in
 oklch and converted to sRGB in `Themes/Classic.Palette.xaml` with the originals kept in comments:
 
 | Token | oklch | sRGB | Role |
