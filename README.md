@@ -84,7 +84,7 @@ Use `-r win-x64` for the same thing on Windows.
 From the pacman repository, once:
 
 ```sh
-printf '[viblauncher]\nServer = https://vib-studios.github.io/viblauncher/repo/$arch\n' \
+printf '[viblauncher]\nServer = https://vibstudios.space/repo/$arch\n' \
   | sudo tee /etc/pacman.d/viblauncher.conf
 sudo pacman -Sy
 sudo pacman -S viblauncher

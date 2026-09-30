@@ -31,12 +31,10 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# The Release workflow publishes the same tags at the same time. They write to
-# different paths and neither is cancelled by the other, but they do not need to
-# run twice for a manual dispatch, so this group is per-ref rather than shared.
+# The Release workflow publishes the same tags at the same time and writes a
+# different release; this one builds the packages and attaches them. Neither
+# cancels the other, so the group is per-ref rather than shared.
 concurrency:
   group: arch-${{ github.ref }}
   cancel-in-progress: true
@@ -170,52 +168,12 @@ jobs:
           path: out/*.pkg.tar.zst
           if-no-files-found: error
 
-  pages:
-    name: Publish pacman repo
-    needs: [verify, build]
-    runs-on: ubuntu-latest
-    # repo-add ships with pacman, so the database is built in an Arch container
-    # rather than on a bare Ubuntu runner. This mirrors the poopascii workflow,
-    # which builds the database and deploys from the same container.
-    container:
-      image: archlinux:base-devel
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    steps:
-      - name: Update system
-        run: pacman -Syu --noconfirm
-
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: viblauncher-pkg-*
-          path: packages
-          merge-multiple: true
-
-      - name: Create pacman repo database
-        run: |
-          set -euo pipefail
-          mkdir -p repo
-          ls -l packages
-          # repo-add reads the package metadata to build the database, so the
-          # architecture suffix in the filename is what selects what lands in
-          # the db; both are added because both are real.
-          repo-add repo/viblauncher.db.tar.gz packages/*.pkg.tar.zst
-          rm -f repo/viblauncher.db repo/viblauncher.files
-          cp repo/viblauncher.db.tar.gz repo/viblauncher.db
-          cp repo/viblauncher.files.tar.gz repo/viblauncher.files
-          cp packages/*.pkg.tar.zst repo/
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: repo
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  # There is deliberately no Pages deployment here. A repository Pages site in
+  # this org resolves to the apex domain vibstudios.space, which belongs to
+  # vib-studios.github.io, so deploying from here either fails or writes into
+  # the wrong site. The pacman database is built by the Pacman repository
+  # workflow in vib-studios.github.io, which owns the domain, and it reads the
+  # packages off the release this workflow attaches them to.
 
   release:
     name: Attach to release
