@@ -188,6 +188,22 @@ jobs:
           path: packages
           merge-multiple: true
 
+      # Both architectures have to be here before anything is uploaded. A
+      # release that carries only x86_64 looks complete, and an aarch64 user
+      # installing from it gets "no packages match" rather than a clear reason.
+      - name: Verify both architectures are present
+        env:
+          EXPECTED: 'x86_64 aarch64'
+        run: |
+          set -euo pipefail
+          ls -l packages
+          for arch in $EXPECTED; do
+            if ! ls packages/ | grep -q -- "-${arch}\.pkg\.tar\.zst$"; then
+              echo "no package for $arch in the downloaded artifacts" >&2
+              exit 1
+            fi
+          done
+
       # The release is created as a draft by the Release workflow, which runs on
       # the same tag. If this runs first there is nothing to attach to yet, so
       # wait rather than publishing a second release for the same tag.
