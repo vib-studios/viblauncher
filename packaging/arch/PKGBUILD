@@ -1,25 +1,12 @@
 # Maintainer: Vib Studios
 
-# The database name is suffixed with the architecture so a repository can hold an
-# x86_64 build and an aarch64 build at the same pkgver. repo-add indexes a
-# package by name and version, so with an unsuffixed name both builds claim
-# viblauncher at $pkgver-$pkgrel and adding the second removes the first
-# ("Removing existing entry"), leaving a multi-arch repository carrying one
-# architecture and pacman finding nothing to install on the other.
-pkgname=viblauncher-$arch
+pkgname=viblauncher
 pkgver=0.2.0
 pkgrel=1
 pkgdesc='Minecraft launcher for instances, mods and vib-MC servers'
 arch=('x86_64' 'aarch64')
 url='https://github.com/vib-studios/viblauncher'
 license=('GPL-3.0-or-later')
-
-# The files themselves are not suffixed. The command is `viblauncher` on every
-# architecture, and _app is the unsuffixed name used for the install paths, the
-# desktop entry and the icon names, so nothing user-facing changes and the
-# wrapper keeps the name a user would type. _app is underscore-prefixed, as the
-# packaging guidelines require of any variable makepkg does not define itself.
-_app=viblauncher
 
 # The launcher shells out to Java to run Minecraft, so a JRE is a hard runtime
 # dependency rather than a suggestion. 17 is the floor for anything from
@@ -45,17 +32,15 @@ optdepends=(
 
 makedepends=('dotnet-sdk-10.0' 'git')
 
-# Named explicitly so the checkout lands in $srcdir/$_app regardless of what the
-# repository itself is called; build(), check() and package() all cd there.
-# $_app rather than $pkgname: pkgname now carries -$arch, and the clone is the
-# same working tree for both architectures.
-source=("$_app::git+$url.git#tag=v$pkgver")
+# Named explicitly so the checkout lands in $srcdir/$pkgname regardless of what
+# the repository itself is called; build(), check() and package() all cd there.
+source=("$pkgname::git+$url.git#tag=v$pkgver")
 sha256sums=('SKIP')
 
 _project=VibLauncher
 
 build() {
-  cd "$srcdir/$_app"
+  cd "$srcdir/$pkgname"
 
   # Telemetry off and no first-run banner: a package build must not phone home
   # or write into the builder's home directory.
@@ -87,7 +72,7 @@ build() {
 }
 
 check() {
-  cd "$srcdir/$_app"
+  cd "$srcdir/$pkgname"
 
   export DOTNET_CLI_TELEMETRY_OPTOUT=1
   export DOTNET_NOLOGO=1
@@ -98,33 +83,29 @@ check() {
 }
 
 package() {
-  # Paths use $_app, not $pkgname: the installed files are not architecture
-  # suffixed, so /usr/bin/viblauncher and the desktop entry are the same on every
-  # architecture and a user upgrading between them replaces the same paths.
-  #
   # The application and everything it loads go in one directory, with a wrapper
   # on PATH. A .NET application's files are not individually useful and do not
   # belong loose in /usr/lib.
-  install -dm755 "$pkgdir/usr/lib/$_app"
-  cp -r "$srcdir/publish/." "$pkgdir/usr/lib/$_app/"
+  install -dm755 "$pkgdir/usr/lib/$pkgname"
+  cp -r "$srcdir/publish/." "$pkgdir/usr/lib/$pkgname/"
 
   # Everything readable, only the entry point executable.
-  chmod -R u=rwX,go=rX "$pkgdir/usr/lib/$_app"
-  chmod 755 "$pkgdir/usr/lib/$_app/$_project"
+  chmod -R u=rwX,go=rX "$pkgdir/usr/lib/$pkgname"
+  chmod 755 "$pkgdir/usr/lib/$pkgname/$_project"
 
   install -dm755 "$pkgdir/usr/bin"
-  ln -s "/usr/lib/$_app/$_project" "$pkgdir/usr/bin/$_app"
+  ln -s "/usr/lib/$pkgname/$_project" "$pkgdir/usr/bin/$pkgname"
 
-  cd "$srcdir/$_app"
+  cd "$srcdir/$pkgname"
 
-  install -Dm644 "packaging/linux/$_app.desktop" \
-    "$pkgdir/usr/share/applications/$_app.desktop"
+  install -Dm644 packaging/linux/$pkgname.desktop \
+    "$pkgdir/usr/share/applications/$pkgname.desktop"
 
   for size in 16 24 32 48 64 128 256 512; do
-    install -Dm644 "packaging/linux/icons/$_app-$size.png" \
-      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/$_app.png"
+    install -Dm644 "packaging/linux/icons/$pkgname-$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/$pkgname.png"
   done
 
-  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$_app/LICENSE"
-  install -Dm644 README.md "$pkgdir/usr/share/doc/$_app/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
 }
