@@ -182,11 +182,27 @@ jobs:
     permissions:
       contents: write
     steps:
+      # One download per architecture, named explicitly, rather than a pattern
+      # with merge-multiple. With the pattern, both artifacts were fetched but
+      # only the x86_64 package landed in the directory, and the release
+      # published an x86_64-only package set that looked complete. Addressing
+      # each artifact by name cannot silently drop one.
       - uses: actions/download-artifact@v8
         with:
-          pattern: viblauncher-pkg-*
-          path: packages
-          merge-multiple: true
+          name: viblauncher-pkg-x86_64
+          path: packages/x86_64
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: viblauncher-pkg-aarch64
+          path: packages/aarch64
+
+      - name: Flatten the package directories
+        run: |
+          set -euo pipefail
+          find packages -mindepth 2 -name '*.pkg.tar.zst' -exec mv -t packages {} +
+          rmdir packages/x86_64 packages/aarch64
+          ls -l packages
 
       # Both architectures have to be here before anything is uploaded. A
       # release that carries only x86_64 looks complete, and an aarch64 user
@@ -203,6 +219,7 @@ jobs:
               exit 1
             fi
           done
+          echo "both architectures present"
 
       # The release is created as a draft by the Release workflow, which runs on
       # the same tag. If this runs first there is nothing to attach to yet, so
