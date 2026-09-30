@@ -139,25 +139,47 @@ jobs:
           cd packaging/arch
           chown -R builder:builder .
           # The package must be built for the architecture the user will run it
-          # on, and the runner is x86_64, so aarch64 is cross-compiled. makepkg
-          # takes the target through the ARCH environment variable, not a flag;
-          # without it the aarch64 job would silently produce an x86_64 package
-          # that installs and then cannot execute.
-          runuser -u builder -- env ARCH="$TARGET_ARCH" makepkg -f
+          # on, and the runner is x86_64, so aarch64 is cross-compiled.
+          #
+          # ARCH is the documented way to tell makepkg the target, and it is
+          # required, but it is not sufficient on an x86_64 host: it tells
+          # makepkg it may produce a package for that arch, while $CARCH inside
+          # the PKGBUILD still resolves to the host's x86_64. Without CARCH
+          # forced as well, the case statement in build() takes the x86_64
+          # branch, publishes for linux-x64, and names the file -x86_64. That is
+          # a package that installs on aarch64 and then cannot execute, so both
+          # variables have to be set.
+          runuser -u builder -- env ARCH="$TARGET_ARCH" CARCH="$TARGET_ARCH" makepkg -f
 
       # Named so the artifact is self-describing: the pages job below globs
       # these rather than whatever happens to be in the working tree.
       - name: Collect package
         id: collect
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           mkdir -p out
           # makepkg ran in packaging/arch, so the package lands there.
+          found=0
           for pkg in packaging/arch/*.pkg.tar.zst; do
             [ -e "$pkg" ] || continue
+            base=$(basename "$pkg")
+            # The filename carries the architecture, so it is the check: a job
+            # asked for aarch64 that produced an x86_64 package must fail here
+            # rather than publish a package that cannot run on the target.
+            case "$base" in
+              *-"$TARGET_ARCH".pkg.tar.zst) ;;
+              *) echo "expected a $TARGET_ARCH package, got $base" >&2; exit 1 ;;
+            esac
             cp "$pkg" out/
-            echo "package=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
+            echo "package=$base" >> "$GITHUB_OUTPUT"
+            found=1
           done
+          if [ "$found" -eq 0 ]; then
+            echo "makepkg produced no package" >&2
+            exit 1
+          fi
           ls -l out/
 
       # Attached to the release as well as the pacman repo, so someone who
