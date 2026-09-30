@@ -13,11 +13,12 @@
 # Everything is served from a subpath of this repo's Pages site, so it is a
 # sibling of the tarballs rather than a separate place to look.
 
-# Requires Pages to be enabled on this repository (Settings -> Pages, deploy
-# from a branch). Enabling it through the API can auto-assign the apex custom
-# domain to this repo, which belongs to vib-studios.github.io, so it is left as
-# a manual setting on purpose. Do not set a custom domain here: this repo's Pages
-# site is a subpath of vib-studios.github.io, not a site of its own.
+# This workflow does not deploy Pages at all, so nothing needs enabling here.
+# A repository Pages site in this org resolves to the apex domain
+# vibstudios.space, which belongs to the site repository (vib-studios.github.io),
+# so deploying from here would either fail or write into the wrong site. The
+# pacman database is built and served by the Pacman repository workflow in the
+# site repository, which owns the domain. See the note on the release job below.
 name: Arch package
 
 on:
@@ -191,11 +192,11 @@ jobs:
           if-no-files-found: error
 
   # There is deliberately no Pages deployment here. A repository Pages site in
-  # this org resolves to the apex domain vibstudios.space, which belongs to
-  # vib-studios.github.io, so deploying from here either fails or writes into
-  # the wrong site. The pacman database is built by the Pacman repository
-  # workflow in vib-studios.github.io, which owns the domain, and it reads the
-  # packages off the release this workflow attaches them to.
+  # this org resolves to the apex domain vibstudios.space, which belongs to the
+  # site repository (vib-studios.github.io), so deploying from here either fails
+  # or writes into the wrong site. The pacman database is built by the Pacman
+  # repository workflow in the site repository, which owns the domain, and it
+  # reads the packages off the release this workflow attaches them to.
 
   release:
     name: Attach to release
