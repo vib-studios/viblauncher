@@ -90,6 +90,19 @@ sudo pacman -Sy
 sudo pacman -S viblauncher
 ```
 
+**The pacman repository currently indexes x86_64 only.** On aarch64, install the
+`.pkg.tar.zst` from the [release page](https://github.com/vib-studios/viblauncher/releases),
+which carries both architectures:
+
+```sh
+sudo pacman -U viblauncher-0.2.0-1-aarch64.pkg.tar.zst
+```
+
+Both builds are the same package at the same version, and a pacman database is keyed by
+name and version, so it can only hold one of them at a time. Until the package name
+carries the architecture, that is a real difference between the two install paths rather
+than a temporary gap.
+
 Or from source, which builds the same package:
 
 ```
