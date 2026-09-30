@@ -114,6 +114,12 @@ jobs:
         run: |
           useradd -m builder
           chown -R builder:builder .
+          # makepkg reads the PKGBUILD from the current directory and builds
+          # alongside it, so the work happens in packaging/arch. The PKGBUILD
+          # clones the repository itself into $srcdir, so the checkout outside
+          # that directory is only used for the PKGBUILD itself.
+          cd packaging/arch
+          chown -R builder:builder .
           # The package must be built for the architecture the user will run it
           # on, and the runner is x86_64, so aarch64 is cross-compiled. makepkg
           # takes the target through the ARCH environment variable, not a flag;
@@ -128,7 +134,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          for pkg in ./*.pkg.tar.zst; do
+          # makepkg ran in packaging/arch, so the package lands there.
+          for pkg in packaging/arch/*.pkg.tar.zst; do
             [ -e "$pkg" ] || continue
             cp "$pkg" out/
             echo "package=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
