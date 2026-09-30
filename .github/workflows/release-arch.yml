@@ -174,10 +174,19 @@ jobs:
     name: Publish pacman repo
     needs: [verify, build]
     runs-on: ubuntu-latest
+    # repo-add ships with pacman, so the database is built in an Arch container
+    # rather than on a bare Ubuntu runner. This mirrors the poopascii workflow,
+    # which builds the database and deploys from the same container.
+    container:
+      image: archlinux:base-devel
     permissions:
+      contents: read
       pages: write
       id-token: write
     steps:
+      - name: Update system
+        run: pacman -Syu --noconfirm
+
       - uses: actions/download-artifact@v8
         with:
           pattern: viblauncher-pkg-*
