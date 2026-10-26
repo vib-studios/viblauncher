@@ -1,5 +1,8 @@
 # Vib-launcher
 
+>[!WARNING]
+>Viblauncher is now discontinued. There will be no more commits/releases.
+
 A native Minecraft launcher and vib-MC server control panel, built by Vib Studios. Linux is the
 platform it is developed and tested on; the same codebase builds and runs on Windows, with the
 caveat below.
